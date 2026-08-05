@@ -1,0 +1,15 @@
+Home
+Project
+Engine Guide
+Hmsc Workflow
+Y.csv
+XData.csv
+traits
+Checkresults
+jSDM Workflow
+GJAM Workflow
+spOccupancy Workflow
+s-jSDM Workflow
+boral Workflow
+Compare Models
+Guides

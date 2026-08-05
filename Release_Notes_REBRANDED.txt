@@ -1,0 +1,11 @@
+JSDM Studio Rebranded Version
+
+已修改：
+1. 主界面名称：BryoHmsc -> JSDM Studio
+2. 副标题：Hmsc GUI Workbench -> Hmsc-powered Workbench
+3. 图标：改为 JSDM Studio 网络节点图标
+4. 安装包名称/开始菜单/桌面图标：JSDM Studio
+5. 保留两个入口：
+   - JSDM Studio：WebView2 独立窗口模式
+   - JSDM Studio Browser Mode：浏览器备用模式
+6. 增加命名与发布说明文档

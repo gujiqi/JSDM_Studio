@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="jSDM latent variable engine">
+  <defs>
+    <linearGradient id="panel" x1="86" y1="70" x2="426" y2="432"><stop stop-color="#ffffff"/><stop offset=".52" stop-color="#eff6ff"/><stop offset="1" stop-color="#ccfbf1"/></linearGradient>
+    <linearGradient id="teal" x1="98" y1="92" x2="414" y2="410"><stop stop-color="#5eead4"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+  </defs>
+  <ellipse cx="256" cy="455" rx="150" ry="30" fill="#0f172a" opacity=".12"/>
+  <rect x="86" y="78" width="340" height="332" rx="70" fill="url(#panel)" stroke="#b7d9d2" stroke-width="8"/>
+  <rect x="128" y="116" width="118" height="128" rx="24" fill="#ffffff" stroke="#b7d9d2" stroke-width="6"/>
+  <g stroke="#d7e7e3" stroke-width="5"><path d="M151 151h72M151 184h72M151 217h72M174 126v107M200 126v107"/></g>
+  <g fill="#2563eb"><rect x="156" y="132" width="13" height="13" rx="3"/><rect x="183" y="165" width="13" height="13" rx="3"/><rect x="208" y="198" width="13" height="13" rx="3"/></g>
+  <g stroke="#9fbfd2" stroke-width="8" stroke-linecap="round"><path d="M284 151l70 45-70 45M354 151l-70 45 70 45"/></g>
+  <circle cx="284" cy="151" r="22" fill="#60a5fa"/><circle cx="354" cy="151" r="22" fill="#60a5fa"/><circle cx="319" cy="196" r="27" fill="url(#teal)"/><circle cx="284" cy="241" r="22" fill="#14b8a6"/><circle cx="354" cy="241" r="22" fill="#14b8a6"/>
+  <path d="M122 337c34-54 55 31 88-11 28-36 52 20 91-22 29-31 48 7 86-39" fill="none" stroke="#2563eb" stroke-width="12" stroke-linecap="round"/>
+  <path d="M121 361h270" stroke="#94a3b8" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="395" cy="110" r="22" fill="#f59e0b"/>
+</svg>

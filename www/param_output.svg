@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="output ZIP package">
+  <defs>
+    <filter id="softShadow" x="-30%" y="-35%" width="165%" height="180%">
+      <feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#0f172a" flood-opacity=".16"/>
+    </filter>
+    <linearGradient id="top" x1="27" y1="24" x2="101" y2="62">
+      <stop stop-color="#ffffff"/>
+      <stop offset=".6" stop-color="#dbeafe"/>
+      <stop offset="1" stop-color="#99f6e4"/>
+    </linearGradient>
+    <linearGradient id="side" x1="25" y1="46" x2="104" y2="111">
+      <stop stop-color="#e0f2fe"/>
+      <stop offset=".55" stop-color="#a7f3d0"/>
+      <stop offset="1" stop-color="#14b8a6"/>
+    </linearGradient>
+  </defs>
+  <g filter="url(#softShadow)">
+    <path d="M25 44l39-21 39 21-39 23z" fill="url(#top)" stroke="#b6d9d2" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M25 44l39 23v45L25 89z" fill="#dbeafe" stroke="#b6d9d2" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M103 44L64 67v45l39-23z" fill="url(#side)" stroke="#b6d9d2" stroke-width="2.4" stroke-linejoin="round"/>
+    <path d="M48 31l39 23" stroke="#0f766e" stroke-width="4.4" stroke-linecap="round"/>
+    <g font-family="Segoe UI,Arial,sans-serif" font-weight="900" font-size="15" fill="#2563eb">
+      <text x="40" y="86">ZIP</text>
+    </g>
+  </g>
+  <path d="M90 84h18M108 84l-8-8M108 84l-8 8" stroke="#f59e0b" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="32" r="6" fill="#14b8a6"/>
+</svg>

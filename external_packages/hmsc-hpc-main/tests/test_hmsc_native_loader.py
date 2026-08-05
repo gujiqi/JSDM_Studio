@@ -1,0 +1,160 @@
+import numpy as np
+import pandas as pd
+import pytest
+
+from hmsc.utils.export_native_utils import load_native_params
+from hmsc.run_gibbs_sampler import validate_sampler_supported_params
+from pyhmsc import HmscModel
+from pyhmsc.validation import validate_compiled_native_model
+
+
+def test_native_loader_builds_fixed_effect_sampler_state(tmp_path):
+    model = HmscModel(
+        Y=pd.DataFrame({"sp1": [1, 2], "sp2": [0, 3]}),
+        X=pd.DataFrame({"x": [0.0, 1.0]}),
+        x_formula="~ x",
+        distr="poisson",
+    )
+    compiled = model.compile(tmp_path / "run", chains=2)
+
+    dims, data, priors, model_hyper, random_hyper, init_list, n_chains = load_native_params(
+        compiled.init_json
+    )
+
+    assert n_chains == 2
+    assert model_hyper is None
+    assert random_hyper == []
+    assert dims["nr"] == 0
+    assert dims["nc"] == 2
+    assert data["distr"].tolist() == [[3, 1], [3, 1]]
+    assert data["Pi"].shape == (2, 0)
+    assert priors["iUGamma"].shape == (2, 2)
+    assert len(init_list) == 2
+    np.testing.assert_allclose(init_list[0]["Beta"].numpy(), np.zeros((2, 2)))
+    np.testing.assert_allclose(init_list[0]["Xeff"].numpy(), [[1, 0], [1, 1]])
+
+
+def test_native_loader_builds_iid_random_intercept_state(tmp_path):
+    model = HmscModel(
+        Y=pd.DataFrame({"sp1": [1, 2, 0], "sp2": [0, 3, 1]}),
+        X=pd.DataFrame({"x": [0.0, 1.0, 2.0]}),
+        x_formula="~ x",
+        distr="poisson",
+        study_design=pd.DataFrame({"plot": ["a", "b", "a"]}),
+        random_levels={"plot": {"column": "plot", "type": "iid"}},
+    )
+    compiled = model.compile(tmp_path / "run", chains=2)
+    dims, data, _priors, _model_hyper, random_hyper, init_list, _n_chains = load_native_params(
+        compiled.init_json
+    )
+    assert dims["nr"] == 1
+    assert dims["np"].tolist() == [2]
+    assert data["Pi"].tolist() == [[0], [1], [0]]
+    assert random_hyper[0]["sDim"] == 0
+    assert init_list[0]["Eta"][0].shape == (2, 1)
+    assert init_list[0]["Lambda"][0].shape == (1, 2)
+
+
+def test_native_loader_builds_trait_state(tmp_path):
+    model = HmscModel(
+        Y=pd.DataFrame({"sp1": [1, 2], "sp2": [0, 3]}),
+        X=pd.DataFrame({"x": [0.0, 1.0]}),
+        x_formula="~ x",
+        distr="poisson",
+        traits=pd.DataFrame({"body_size": [1.0, 2.0]}, index=["sp1", "sp2"]),
+        trait_formula="~ body_size",
+    )
+    compiled = model.compile(tmp_path / "traits", chains=1)
+    dims, data, priors, _model_hyper, _random_hyper, init_list, _n_chains = load_native_params(
+        compiled.init_json
+    )
+    assert dims["nt"] == 2
+    assert data["T"].shape == (2, 2)
+    assert priors["mGamma"].shape == (4,)
+    assert priors["UGamma"].shape == (4, 4)
+    assert init_list[0]["Gamma"].shape == (2, 2)
+
+
+def test_native_loader_builds_phylogeny_state(tmp_path):
+    phylo = pd.DataFrame(
+        [[1.0, 0.2], [0.2, 1.0]],
+        index=["sp1", "sp2"],
+        columns=["sp1", "sp2"],
+    )
+    model = HmscModel(
+        Y=pd.DataFrame({"sp1": [1, 2], "sp2": [0, 3]}),
+        X=pd.DataFrame({"x": [0.0, 1.0]}),
+        x_formula="~ x",
+        distr="poisson",
+        phylo_cov=phylo,
+    )
+    compiled = model.compile(tmp_path / "phylo", chains=1)
+    _dims, data, priors, _model_hyper, _random_hyper, init_list, _n_chains = load_native_params(
+        compiled.init_json
+    )
+    assert data["C"].shape == (2, 2)
+    assert data["eC"].shape == (2,)
+    assert data["VC"].shape == (2, 2)
+    assert priors["rhopw"].shape[1] == 2
+    assert init_list[0]["rhoInd"].shape == (2,)
+
+
+def test_native_loader_builds_full_spatial_random_level_state(tmp_path):
+    model = HmscModel(
+        Y=pd.DataFrame({"sp1": [1, 2, 0], "sp2": [0, 3, 1]}),
+        X=pd.DataFrame({"x": [0.0, 1.0, 2.0]}),
+        x_formula="~ x",
+        distr="poisson",
+        study_design=pd.DataFrame(
+            {"plot": ["a", "b", "c"], "xcoord": [0.0, 1.0, 0.0], "ycoord": [0.0, 0.0, 1.0]}
+        ),
+        random_levels={"plot": {"column": "plot", "type": "spatial_full", "coords": ["xcoord", "ycoord"]}},
+    )
+    compiled = model.compile(tmp_path / "spatial", chains=1)
+    dims, data, _priors, _model_hyper, random_hyper, init_list, _n_chains = load_native_params(
+        compiled.init_json
+    )
+    assert dims["nr"] == 1
+    assert data["Pi"].tolist() == [[0], [1], [2]]
+    assert random_hyper[0]["sDim"] == 2
+    assert random_hyper[0]["spatialMethod"] == "Full"
+    assert random_hyper[0]["iWg"].shape == (1, 3, 3)
+    assert init_list[0]["Eta"][0].shape == (3, 1)
+
+
+def test_native_loader_builds_random_slope_state(tmp_path):
+    model = HmscModel(
+        Y=pd.DataFrame({"sp1": [1, 2, 0], "sp2": [0, 3, 1]}),
+        X=pd.DataFrame({"x": [0.0, 1.0, 2.0]}),
+        x_formula="~ x",
+        distr="poisson",
+        study_design=pd.DataFrame({"plot": ["a", "b", "a"], "elevation": [10.0, 20.0, 10.0]}),
+        random_levels={"plot": {"column": "plot", "type": "iid", "x_formula": "~ elevation"}},
+    )
+    compiled = model.compile(tmp_path / "random-slope", chains=1)
+    dims, _data, _priors, _model_hyper, random_hyper, init_list, _n_chains = load_native_params(
+        compiled.init_json
+    )
+    assert dims["nr"] == 1
+    assert random_hyper[0]["xDim"] == 2
+    assert random_hyper[0]["xMat"].shape == (2, 2)
+    assert init_list[0]["Lambda"][0].shape == (1, 2, 2)
+
+    results = validate_compiled_native_model(compiled.init_json)
+    by_name = {result.name: result for result in results}
+    assert not by_name["native_sampler_supported"].passed
+    with pytest.raises(NotImplementedError, match="random intercepts only"):
+        validate_sampler_supported_params(random_hyper)
+
+
+def test_random_slope_sampling_is_guarded(tmp_path):
+    model = HmscModel(
+        Y=pd.DataFrame({"sp1": [1, 2, 0]}),
+        X=pd.DataFrame({"x": [0.0, 1.0, 2.0]}),
+        x_formula="~ x",
+        distr="poisson",
+        study_design=pd.DataFrame({"plot": ["a", "b", "a"], "elevation": [10.0, 20.0, 10.0]}),
+        random_levels={"plot": {"column": "plot", "type": "iid", "x_formula": "~ elevation"}},
+    )
+    with pytest.raises(NotImplementedError):
+        model.sample(samples=1, transient=0, thin=1, chains=1, init="python-native", workdir=tmp_path)

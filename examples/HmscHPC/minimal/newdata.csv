@@ -1,0 +1,4 @@
+,forest_cover,elevation,moisture,substrate
+new_site_1,0.30,-0.80,0.38,sand
+new_site_2,0.55,0.10,0.60,clay
+new_site_3,0.78,0.90,0.84,peat

@@ -1,0 +1,8 @@
+修复内容：
+之前 Launch_JSDMStudio.bat 里用 Rscript -e 写了很长的 R 命令，在 Windows cmd 中引号被破坏，导致：
+Error: unexpected '\'
+
+本版本新增 check_packages.R，让 bat 只调用：
+Rscript check_packages.R
+
+这样更稳定。

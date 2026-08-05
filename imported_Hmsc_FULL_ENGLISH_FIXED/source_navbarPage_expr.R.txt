@@ -1,0 +1,422 @@
+navbarPage(
+  title = div(class = "brand-title", "🔬 JSDM Studio", tags$small("Hmsc-powered Workbench")),
+  theme = theme,
+  collapsible = TRUE,
+  windowTitle = "JSDM Studio - JSDM Studio graphical modellingtool",
+
+  header = tags$head(tags$style(HTML("
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(20,184,166,.18), transparent 32%),
+        radial-gradient(circle at 85% 12%, rgba(56,189,248,.14), transparent 30%),
+        linear-gradient(135deg, #f8fafc 0%, #ecfdf5 48%, #f8fafc 100%);
+      color: #0f172a;
+    }
+    .navbar {
+      box-shadow: 0 12px 32px rgba(15, 118, 110, 0.20);
+      border-bottom: 1px solid rgba(255,255,255,.45);
+    }
+    .brand-title { font-weight: 950; letter-spacing: .2px; }
+    .brand-title small { font-size: 12px; margin-left: 8px; font-weight: 600; opacity: .75; }
+    .container-fluid { max-width: 1560px; }
+    .hero {
+      margin: 20px 0 18px;
+      padding: 30px;
+      border-radius: 30px;
+      color: #f8fafc;
+      background:
+        radial-gradient(circle at 88% 22%, rgba(255,255,255,.18), transparent 28%),
+        linear-gradient(135deg, #0f766e 0%, #115e59 50%, #0f172a 100%);
+      box-shadow: 0 24px 60px rgba(15, 23, 42, .18);
+      overflow: hidden;
+      position: relative;
+    }
+    .hero h1 { font-size: 35px; font-weight: 950; margin: 0 0 10px 0; }
+    .hero p { font-size: 15.5px; line-height: 1.7; color: rgba(248,250,252,.9); max-width: 950px; }
+    .soft-card {
+      background: rgba(255,255,255,.95);
+      border: 1px solid rgba(15,118,110,.13);
+      border-radius: 24px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 14px 40px rgba(15, 23, 42, .075);
+      backdrop-filter: blur(8px);
+    }
+    .soft-card h3, .soft-card h4 {
+      font-weight: 900;
+      color: #134e4a;
+      margin-top: 0;
+      letter-spacing: -.2px;
+    }
+    .metric-card {
+      background: rgba(255,255,255,.96);
+      border: 1px solid rgba(15,118,110,.12);
+      border-radius: 22px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, .06);
+      min-height: 112px;
+      margin-bottom: 16px;
+    }
+    .metric-icon {
+      width: 54px; height: 54px; border-radius: 18px;
+      display: flex; align-items:center; justify-content:center;
+      font-size: 28px;
+      background: linear-gradient(135deg, #ccfbf1, #e0f2fe);
+      box-shadow: inset 0 0 0 1px rgba(15,118,110,.12);
+    }
+    .metric-label { font-size: 12px; color: #64748b; font-weight: 750; text-transform: uppercase; letter-spacing:.3px;}
+    .metric-value { font-size: 25px; color: #0f4f4a; font-weight: 950; line-height:1.1; }
+    .metric-note { font-size: 12.5px; color: #64748b; margin-top: 3px; }
+    .icon-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 12px; border-radius: 999px;
+      background: #ecfeff; color: #155e75; font-weight: 800; font-size: 12px;
+      margin: 4px 6px 4px 0; border: 1px solid #cffafe;
+    }
+    .ib-emoji { font-size: 15px; }
+    .note {
+      background: #ecfdf5; border-left: 6px solid #0f766e; border-radius: 16px;
+      padding: 13px 15px; margin: 10px 0 14px; color: #134e4a; line-height: 1.55;
+    }
+    .warn-note {
+      background: #fff7ed; border-left: 6px solid #ea580c; border-radius: 16px;
+      padding: 13px 15px; margin: 10px 0 14px; color: #7c2d12; line-height: 1.55;
+    }
+    .param-help {
+      font-size: 12.6px; color: #64748b; line-height: 1.45; margin-top: -6px; margin-bottom: 13px;
+    }
+    .form-control, .form-select { border-radius: 14px; }
+    .btn { border-radius: 14px !important; font-weight: 850; box-shadow: 0 5px 14px rgba(15,23,42,.08); }
+    .nav-tabs .nav-link { border-radius: 14px 14px 0 0; font-weight: 750; }
+    pre {
+      background: #0b1220 !important; color: #d1fae5 !important;
+      border-radius: 18px; border: 1px solid #1e293b; padding: 16px;
+      font-size: 13px; line-height: 1.55;
+    }
+    details {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px;
+      padding: 12px 14px; margin-bottom: 11px;
+    }
+    summary { cursor: pointer; font-weight: 900; color: #134e4a; }
+    .output-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;
+    }
+    .output-card {
+      border-radius: 20px; padding: 16px; background: linear-gradient(135deg,#ffffff,#f8fafc);
+      border: 1px solid #e2e8f0; min-height: 125px;
+    }
+    .output-card .emoji { font-size: 28px; }
+    .output-card b { display: block; color: #134e4a; font-size: 15px; margin-top: 6px; }
+    .output-card span { color: #64748b; font-size: 12.5px; }
+
+    .progress-wrap {
+      background: #f8fafc;
+      border: 1px solid #dbeafe;
+      border-radius: 18px;
+      padding: 15px;
+      margin-top: 12px;
+    }
+    .progress-track {
+      height: 18px;
+      width: 100%;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+      box-shadow: inset 0 1px 3px rgba(15,23,42,.14);
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #14b8a6, #22c55e);
+      border-radius: 999px;
+      transition: width .35s ease;
+    }
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 9px;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .step-list {
+      margin: 10px 0 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .step-list li {
+      padding: 7px 9px;
+      margin: 5px 0;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      color: #475569;
+      font-size: 13px;
+    }
+    .step-list li.done {
+      background: #ecfdf5;
+      border-color: #bbf7d0;
+      color: #166534;
+      font-weight: 800;
+    }
+    .step-list li.active {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+      font-weight: 900;
+    }
+    .eta-card {
+      background: linear-gradient(135deg,#f0fdfa,#eff6ff);
+      border: 1px solid #ccfbf1;
+      border-radius: 18px;
+      padding: 14px;
+      margin-top: 12px;
+      color: #134e4a;
+    }
+
+    .slider-number-block {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 12px 12px 6px 12px;
+      margin-bottom: 12px;
+    }
+    .slider-number-label {
+      font-weight: 900;
+      color: #134e4a;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+    .slider-number-block .form-group {
+      margin-bottom: 0px;
+    }
+    .irs--shiny .irs-bar,
+    .irs--shiny .irs-single {
+      background: #0f766e !important;
+      border-color: #0f766e !important;
+    }
+    .irs--shiny .irs-handle {
+      border-color: #0f766e !important;
+    }
+
+    .section-title { display:flex; align-items:center; gap:9px; }
+    .section-title .big-icon { font-size: 24px; }
+  "))),
+
+  tabPanel(
+    "🏠 Start",
+    fluidRow(column(12, div(class="hero",
+      h1("🔬 JSDM Studio: graphical JSDM modelling + reproducible reporting"),
+      p("JSDM Studio integrates the Hmsc joint species distribution modelling workflow into a graphical interface: data upload, model specification, MCMC fitting, convergence diagnostics, model fit, parameter estimates, variance partitioning, species associations, environmental gradient predictions, and HTML reports. Users do not need to write R code; they only upload data, set parameters, and click Run.")
+    ))),
+    fluidRow(
+      column(3, metric_card("🧬", "modelcore", "Hmsc", "jointspecies distributionmodel")),
+      column(3, metric_card("📈", "resultsEnhanced", "More outputs", "diagnostics, fit, parameters, prediction")),
+      column(3, metric_card("🖱️", "Usage", "Double-click", "run_app.bat Launch")),
+      column(3, metric_card("📦", "resultsDownload", "ZIP", "One-click packaging of all outputs"))
+    ),
+    fluidRow(
+      column(7, div(class="soft-card",
+        h3(class="section-title", span(class="big-icon","✅"), "Recommended first test"),
+        div(class="note", tags$b("most stable option: "), "Use example data Y_presence_absence.csv + XData.csv; distr Select probit; samples=20, transient=10, thin=1, nChains=2, nParallel=1.switch to real data after the test run succeedsnumberdata."),
+        icon_badge("🟢", "probit = 0/1 presence-absence"),
+        icon_badge("🔢", "poisson = counts"),
+        icon_badge("📉", "normal = continuousvalue"),
+        icon_badge("🧪", "testsmall settings"),
+        icon_badge("📚", "Formal analysisneed to check convergence")
+      )),
+      column(5, div(class="soft-card",
+        h3(class="section-title", span(class="big-icon","⚠️"), "Important reminder"),
+        p("thisthe interface lowers the operational barrier, but it does not replace statistical judgement.formal manuscript must be reported in MCMC settings, convergence diagnostics, modelfitmetricsandversioninformation."),
+        div(class="warn-note", "Hmsc modelmayRuna long time. Cross-validation, WAIC, prediction gradients, and species associations will noticeably increase computation time. During testing, you can disable some outputs.")
+      ))
+    )
+  ),
+
+  tabPanel(
+    "📁 Data upload",
+    fluidRow(
+      column(4, div(class="soft-card",
+        h4(class="section-title", span(class="big-icon","📤"), "Uploadinputnumberdata"),
+        fileInput("Y_file", "Y.csv: speciesmatrix(Required)", accept = ".csv"),
+        div(class="param-help", "rows=sampling units, columns=species.0/1, countsor continuous values. The first column is recommended to contain sampling unit names."),
+        fileInput("X_file", "XData.csv: environmental variablestable(Required)", accept = ".csv"),
+        div(class="param-help", "rows=sampling units, columns=environmental variables.row names mustmatch Y.csv."),
+        fileInput("Tr_file", "traits.csv / TrData.csv: speciestraitstable(Optional)", accept = ".csv"),
+        div(class="param-help", "rows=species, columns=traits.speciesnames must match the column names in Y.csv."),
+        fileInput("study_file", "studyDesign.csv: sampling unitsdesign table(Optional)", accept = ".csv"),
+        div(class="param-help", "Used for sample, plot, site, year etc.Random effectsmingroup."),
+        fileInput("coord_file", "coordinates.csv: spatial coordinatestable(Optional)", accept = ".csv"),
+        div(class="param-help", "Used forSpatialRandom effects.Common column names: x/y or longitude/latitude."),
+        fileInput("phylo_file", "phyloTree: Newick treefile(Optional)", accept = c(".tre",".tree",".nwk",".txt")),
+        actionButton("check_data", "🔍 Check data", class = "btn-primary w-100")
+      )),
+      column(8,
+        fluidRow(
+          column(3, uiOutput("metric_y")),
+          column(3, uiOutput("metric_x")),
+          column(3, uiOutput("metric_sp")),
+          column(3, uiOutput("metric_status"))
+        ),
+        div(class="soft-card",
+          h4(class="section-title", span(class="big-icon","👀"), "Data preview and check"),
+          tabsetPanel(
+            tabPanel("Y.csv", br(), DTOutput("Y_preview")),
+            tabPanel("XData.csv", br(), DTOutput("X_preview")),
+            tabPanel("traits", br(), DTOutput("Tr_preview")),
+            tabPanel("Checkresults", br(), verbatimTextOutput("check_result"))
+          )
+        )
+      )
+    )
+  ),
+
+  tabPanel(
+    "⚙️ modelparameters",
+    fluidRow(
+      column(4, div(class="soft-card",
+        h4(class="section-title", span(class="big-icon","🧬"), "Model settings"),
+        selectInput("distr", "distr: response distribution", choices = c("probit", "poisson", "normal"), selected = "probit"),
+        div(class="param-help", "probit: presence/absence; poisson: counts; normal: continuous abundance/cover/biomass."),
+        textInput("XFormula", "XFormula: environmental variablesformula", value = "~ ."),
+        div(class="param-help", "~ . Use all environmental variables; can also be written as ~ pH + moisture + canopy."),
+        checkboxInput("use_traits", "Use species traits TrData", value = FALSE),
+        textInput("TrFormula", "TrFormula: traitsformula", value = "~ ."),
+        div(class="param-help", "Only effective when traits.csv is uploaded and the option is checked."),
+        checkboxInput("use_phylogeny", "Use phylogeny tree phyloTree", value = FALSE),
+        div(class="param-help", "Only effective when a tree file is uploaded and the option is checked.")
+      )),
+      column(4, div(class="soft-card",
+        h4(class="section-title", span(class="big-icon","🗺️"), "Random effectsand spatial"),
+        selectInput("random_mode", "Random effect mode", choices = c("none", "sample", "spatial"), selected = "sample"),
+        div(class="param-help", "none Do not add random effects effects; sample sampling units/plotRandom effects; spatial SpatialRandom effects."),
+        textInput("random_col", "Random effect column", value = "sample"),
+        div(class="param-help", "For example sample, plot, site.if notUpload studyDesign, sample will automatically follow Y row nameGenerate."),
+        textInput("x_col", "Spatial X/longitude column name", value = "longitude"),
+        textInput("y_col", "Spatial Y/latitude column name", value = "latitude"),
+        selectInput("spatial_method", "Spatial method", choices = c("Full", "NNGP", "GPP"), selected = "Full"),
+        slider_number_input("nNeighbours", "NNGP number of neighbours", value = 10, min = 1, max = 50, step = 1,
+                            help = "Full suitable forsmall datasets; NNGP/GPP suitable forlarge datasetsbutmore complex.right-sidenumbernumeric box can accept custom valuesvalue.")
+      )),
+      column(4, div(class="soft-card",
+        h4(class="section-title", span(class="big-icon","⏱️"), "MCMC settings"),
+        slider_number_input("samples", "samples: retained posterior samples", value = 100, min = 10, max = 5000, step = 10,
+                            help = "test20–100 can be used for testing; formal analysis usually needs larger values. The right numeric box can be used for custom values."),
+        slider_number_input("transient", "transient: burn-in", value = 50, min = 0, max = 10000, step = 10,
+                            help = "Initial discarded iterations. Small values are fine for testing; formal analysis should increase this based on convergence diagnostics."),
+        slider_number_input("thin", "thin: thinning interval", value = 1, min = 1, max = 100, step = 1,
+                            help = "how many steps between saved samplessaveonesamples.valuelarger, total iterationsusuallymore."),
+        slider_number_input("nChains", "nChains: number of chains", value = 2, min = 1, max = 8, step = 1,
+                            help = "Formal analysisRecommendedat least 2 chains, commonly used 4 chainsUsed for Gelman diagnostics."),
+        slider_number_input("nParallel", "nParallel: parallel workers", value = 1, min = 1, max = 8, step = 1,
+                            help = "Windows beginnersUse 1 first. Do not exceed the number of CPU cores."),
+        slider_number_input("verbose", "verbose: console progress interval", value = 50, min = 0, max = 5000, step = 5,
+                            help = "Hmsc sampleMcmc Interval for showing progress in the console."),
+        slider_number_input("seed", "seed: random seed", value = 123, min = 1, max = 9999, step = 1,
+                            help = "Fixing the random seed makes results easier to reproduce."),
+        div(class="warn-note", "testcansmall settings; Formal analysisneed to increase samples/transient, andfocuscheck MCMC_convergence.txt and traceplots.")
+      ))
+    )
+  ),
+
+  tabPanel(
+    "📊 Output settings",
+    fluidRow(
+      column(12, div(class="soft-card",
+        h3(class="section-title", span(class="big-icon","📦"), "Selectneed toGenerateofresults"),
+        div(class="output-grid",
+          div(class="output-card", div(class="emoji","💾"), tags$b("Save model"), span("save unfitted_models.RData, models_thin_*, hmsc_model.rds")),
+          div(class="output-card", div(class="emoji","📈"), tags$b("MCMC diagnostics"), span("MCMC_convergence.txt, MCMC_traceplots.pdf")),
+          div(class="output-card", div(class="emoji","🧪"), tags$b("modelfit"), span("interpretmodel fit, cross-validation, and WAIC")),
+          div(class="output-card", div(class="emoji","🧾"), tags$b("Parameter estimates"), span("Beta/Gamma posterior means, support values, and figures")),
+          div(class="output-card", div(class="emoji","🧩"), tags$b("Variance partitioning"), span("variance_partitioning tableandfigures")),
+          div(class="output-card", div(class="emoji","🕸️"), tags$b("Species associations"), span("Omega Species associationsmatrixandfigures")),
+          div(class="output-card", div(class="emoji","🔮"), tags$b("Environmental gradient predictions"), span("predictions_environmental_gradients.pdf")),
+          div(class="output-card", div(class="emoji","📄"), tags$b("HTML report"), span("JSDM Studio_report.html"))
+        )
+      )),
+      column(4, div(class="soft-card",
+        h4("Basic outputs"),
+        checkboxInput("save_model", "Save modelobject", value = TRUE),
+        checkboxInput("compute_pred", "Compute predicted values computePredictedValues", value = TRUE),
+        checkboxInput("evaluate_fit", "Explanatory model fit evaluateModelFit", value = TRUE),
+        checkboxInput("make_report", "Generate HTML report", value = TRUE)
+      )),
+      column(4, div(class="soft-card",
+        h4("modelevaluate"),
+        checkboxInput("compute_cv", "Cross-validationpredictive performance", value = TRUE),
+        slider_number_input("nfolds", "nfolds: cross-validation folds", value = 2, min = 2, max = 10, step = 1,
+                            help = "2 folds is fastest; 5 or 10 folds are more common but slower."),
+        checkboxInput("compute_waic", "Compute WAIC", value = FALSE),
+        checkboxInput("compute_diag", "MCMC convergence diagnostics", value = TRUE),
+        div(class="param-help", "Cross-validationand WAIC may be time-consuming. During testing, WAIC can be disabled.")
+      )),
+      column(4, div(class="soft-card",
+        h4("parameters, figures, and predictions"),
+        checkboxInput("compute_parameters", "OutputParameter estimates Beta/Gamma/Omega", value = TRUE),
+        checkboxInput("compute_vp", "OutputVariance partitioning", value = TRUE),
+        checkboxInput("compute_assoc", "OutputSpecies associations Omega", value = TRUE),
+        checkboxInput("make_predictions", "OutputEnvironmental gradient predictionsfigures", value = TRUE),
+        slider_number_input("support_beta", "Beta support threshold", value = 0.95, min = 0.50, max = 0.99, step = 0.01,
+                            help = "Used for Beta figuresShow supported environmental responses. 0.95 is common; 0.80/0.90 can also be tested."),
+        slider_number_input("support_gamma", "Gamma support threshold", value = 0.95, min = 0.50, max = 0.99, step = 0.01,
+                            help = "Used for Gamma figuresShow supported trait effects."),
+        slider_number_input("support_omega", "Omega support threshold", value = 0.90, min = 0.50, max = 0.99, step = 0.01,
+                            help = "Used forspeciesresidual associationfigures.Note Omega is not direct evidence of species interactions.")
+      ))
+    )
+  ),
+
+  tabPanel(
+    "🚀 Run & results",
+    fluidRow(
+      column(4, div(class="soft-card",
+        h4(class="section-title", span(class="big-icon","🚀"), "Runcontrol"),
+        div(class="note", "Recommended: first click 'Check data', then 'Run Hmsc'. Do not close the window while the model is running. Outputs will be saved to output/hmsc_date_time/."),
+        uiOutput("pre_run_estimate"),
+        actionButton("check_data2", "🔍 Check data", class = "btn-primary w-100"),
+        br(), br(),
+        actionButton("run_model", "🚀 Run Hmsc and generate results", class = "btn-success w-100"),
+        br(), br(),
+        downloadButton("download_results", "📦 Download all results ZIP", class = "w-100")
+      )),
+      column(8, 
+      div(class="soft-card",
+        h4(class="section-title", span(class="big-icon","⏱️"), "Progress and estimated time remaining"),
+        uiOutput("progress_panel"),
+        uiOutput("step_list")
+      ),
+      div(class="soft-card",
+        h4(class="section-title", span(class="big-icon","📜"), "Run log"),
+        verbatimTextOutput("log")
+      ))
+    ),
+    fluidRow(
+      column(12, div(class="soft-card",
+        h4(class="section-title", span(class="big-icon","🗂️"), "Output filescolumnstable"),
+        verbatimTextOutput("files")
+      ))
+    )
+  ),
+
+  tabPanel(
+    "📘 Parameter guide",
+    fluidRow(column(12, div(class="soft-card",
+      h3("📘 beginnersParameter guide"),
+      tags$details(open = NA, tags$summary("distr: response distribution"),
+              tags$p("probit suitable for 0/1 presence-absence; poisson suitable for non-negative integernumbercounts; normal suitable forcontinuousnumberdata.")),
+      tags$details(open = NA, tags$summary("XFormula: environmental variablesformula"),
+              tags$p("~ . representsUse XData all variables.~ pH + moisture + canopy representsuse only these variables.")),
+      tags$details(open = NA, tags$summary("MCMC settings"),
+              tags$p("samples is the number of retained posterior samples; transient is burn-in; thin is the thinning interval; nChains is the number of chains; nParallel is the number of parallel workers.")),
+      tags$details(open = NA, tags$summary("Why are there so many output files?？"),
+              tags$p("modelfitting, convergence diagnostics, parameter estimates, variance partitioning, and prediction figures answer different questions: whether the model is stable, how interpretable it is, which environmental variables matter, how species are associated, and how responses change along environmental gradients.")),
+      tags$details(open = NA, tags$summary("Formal analysisMinimum recommended"),
+              tags$p("do notonly check whether the model finished. You also need MCMC_convergence.txt, traceplots, model fit, cross-validation results; saving used_config.yml ensures reproducibility."))
+    )))
+  )
+)

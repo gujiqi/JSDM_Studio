@@ -1,0 +1,19 @@
+JSDM Studio 用户安装最短说明
+
+1. 先安装 R for Windows:
+   https://cran.r-project.org/bin/windows/base/
+
+2. 双击 JSDMStudio_Setup.exe 安装。
+
+3. 安装后双击桌面 JSDM Studio 图标。
+
+4. 第一次启动会自动检查/安装 R 包:
+   Hmsc, shiny, bslib, DT, yaml, ggplot2, zip, coda, ape, corrplot, htmltools
+
+5. 如果独立窗口打不开，请安装 Microsoft Edge WebView2 Evergreen Runtime:
+   https://developer.microsoft.com/microsoft-edge/webview2/
+
+6. 如果还是打不开，用备用模式:
+   Launch_in_default_browser.bat
+
+7. 如果报错，把 startup_log.txt 发给开发者。

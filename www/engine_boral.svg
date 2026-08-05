@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="boral ordination engine">
+  <defs>
+    <linearGradient id="panel" x1="86" y1="78" x2="426" y2="424"><stop stop-color="#ffffff"/><stop offset=".55" stop-color="#eff6ff"/><stop offset="1" stop-color="#ccfbf1"/></linearGradient>
+    <linearGradient id="ord" x1="129" y1="330" x2="379" y2="141"><stop stop-color="#2563eb"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+  </defs>
+  <ellipse cx="256" cy="455" rx="150" ry="30" fill="#0f172a" opacity=".12"/>
+  <rect x="86" y="78" width="340" height="332" rx="70" fill="url(#panel)" stroke="#b7d9d2" stroke-width="8"/>
+  <path d="M136 336V146M136 336h240" stroke="#94a3b8" stroke-width="10" stroke-linecap="round"/>
+  <path d="M160 305c53-91 123-134 204-152" stroke="url(#ord)" stroke-width="12" stroke-linecap="round"/>
+  <g fill="#2563eb"><circle cx="175" cy="286" r="17"/><circle cx="222" cy="250" r="17"/><circle cx="281" cy="211" r="17"/></g>
+  <g fill="#14b8a6"><circle cx="194" cy="332" r="17"/><circle cx="257" cy="292" r="17"/><circle cx="336" cy="171" r="17"/></g>
+  <g fill="none" stroke-linecap="round" stroke-width="12">
+    <path d="M286 348l28-28c11-11 29 6 18 18l-15 15c-11 11-29-6-18-18" stroke="#60a5fa"/>
+    <path d="M334 348l28-28c11-11 29 6 18 18l-15 15c-11 11-29-6-18-18" stroke="#0f766e"/>
+  </g>
+  <circle cx="379" cy="118" r="22" fill="#f59e0b"/>
+</svg>

@@ -1,0 +1,10 @@
+{
+  "build": "metric_card compatibility fix",
+  "timestamp": "2026-05-21T20:49:46.406243",
+  "source_zip": "JSDMWorkbench_Hmsc_FULL_ENGLISH_FIXED_Integrated.zip",
+  "fixed": [
+    "Added metric_card helper required by imported Hmsc panel",
+    "Added icon_badge, guide_block, eta_card, param_box and small safety helpers",
+    "Kept all model panels otherwise unchanged"
+  ]
+}

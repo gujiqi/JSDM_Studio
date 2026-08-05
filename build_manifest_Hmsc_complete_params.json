@@ -1,0 +1,23 @@
+{
+  "build": "Hmsc complete parameters and result workflow",
+  "timestamp": "2026-05-18T18:34:14.654716",
+  "added_hmsc_sections": [
+    "advanced constructor settings",
+    "random-level details",
+    "priors and advanced fitting",
+    "sampleMcmc updater controls",
+    "convergence/output plotting controls",
+    "Hmsc result ZIP workflow explanation"
+  ],
+  "source_files_considered": [
+    "Hmsc manual PDF",
+    "S1_define_models_template.R",
+    "S2_fit_models.R",
+    "S3_evaluate_convergence.R",
+    "S4_compute_model_fit.R",
+    "S5_show_model_fit.R",
+    "S6_show_parameter_estimates.R",
+    "S7_make_predictions.R",
+    "Hmsc vignettes"
+  ]
+}

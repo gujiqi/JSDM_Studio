@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="diagnostics chart">
+  <defs>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#0f172a" flood-opacity=".16"/>
+    </filter>
+    <linearGradient id="panel" x1="22" y1="18" x2="106" y2="108">
+      <stop stop-color="#ffffff"/>
+      <stop offset=".55" stop-color="#eef2ff"/>
+      <stop offset="1" stop-color="#ccfbf1"/>
+    </linearGradient>
+    <linearGradient id="line" x1="36" y1="78" x2="98" y2="41">
+      <stop stop-color="#2563eb"/>
+      <stop offset=".55" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <g filter="url(#softShadow)">
+    <rect x="21" y="21" width="86" height="84" rx="18" fill="url(#panel)" stroke="#b6d9d2" stroke-width="2.5"/>
+    <path d="M35 84V41M35 84h59" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+    <path d="M42 75c8-20 15 8 23-6 8-15 14 7 24-20" fill="none" stroke="url(#line)" stroke-width="5.2" stroke-linecap="round"/>
+    <circle cx="50" cy="55" r="5.5" fill="#f59e0b"/>
+    <circle cx="76" cy="61" r="5.5" fill="#14b8a6"/>
+  </g>
+  <path d="M83 42l10 10 20-25" fill="none" stroke="#0f766e" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="106" cy="28" r="6" fill="#a7f3d0"/>
+</svg>

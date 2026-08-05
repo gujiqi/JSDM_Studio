@@ -1,0 +1,8 @@
+如果出现 'Rscript' is not recognized：
+这个版本的 bat 会自动寻找 Rscript.exe。
+如果仍然失败，请确认 R 已安装，常见路径：
+C:\Program Files\R\R-4.3.3\bin\Rscript.exe
+
+使用顺序：
+1. 双击 install_packages.bat
+2. 双击 run_app.bat

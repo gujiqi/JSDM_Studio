@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="spatial map random effects">
+  <defs>
+    <filter id="softShadow" x="-30%" y="-35%" width="165%" height="180%">
+      <feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#0f172a" flood-opacity=".16"/>
+    </filter>
+    <linearGradient id="map" x1="19" y1="27" x2="106" y2="105">
+      <stop stop-color="#ffffff"/>
+      <stop offset=".48" stop-color="#e0f2fe"/>
+      <stop offset="1" stop-color="#c7f5e9"/>
+    </linearGradient>
+    <linearGradient id="fold" x1="24" y1="29" x2="103" y2="101">
+      <stop stop-color="#38bdf8"/>
+      <stop offset=".5" stop-color="#5eead4"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="pin" x1="61" y1="16" x2="94" y2="88">
+      <stop stop-color="#f0abfc"/>
+      <stop offset=".5" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <g filter="url(#softShadow)">
+    <path d="M21 37l29-10 28 10 29-10v67l-29 10-28-10-29 10z" fill="url(#map)" stroke="#b6d9d2" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M50 27v67M78 37v67M21 60l29-10 28 10 29-10M21 82l29-10 28 10 29-10" fill="none" stroke="url(#fold)" stroke-width="2.3" opacity=".55"/>
+    <path d="M77 20c-15 0-27 12-27 27 0 20 27 46 27 46s27-26 27-46c0-15-12-27-27-27z" fill="url(#pin)"/>
+    <circle cx="77" cy="47" r="9.5" fill="#ffffff"/>
+    <circle cx="77" cy="47" r="4" fill="#0f766e"/>
+  </g>
+  <path d="M28 96h20M28 96V76" stroke="#2563eb" stroke-width="4.4" stroke-linecap="round"/>
+  <circle cx="31" cy="78" r="5" fill="#fbbf24"/>
+</svg>

@@ -1,0 +1,23 @@
+{
+  "build": "Hmsc panel removed",
+  "timestamp": "2026-05-21T20:53:13.858184",
+  "source_zip": "JSDMWorkbench_Hmsc_FULL_ENGLISH_FIXED_Integrated_METRIC_FIX.zip",
+  "removed": [
+    "Removed Hmsc Workflow tab from app.R",
+    "Removed imported FULL_ENGLISH_FIXED Hmsc server logic",
+    "Removed helpers_hmsc_fixed.R source line"
+  ],
+  "removed_hmsc_tab_chars": 22490,
+  "tabs_after": [
+    "Home",
+    "Project",
+    "Engine Guide",
+    "jSDM Workflow",
+    "GJAM Workflow",
+    "spOccupancy Workflow",
+    "s-jSDM Workflow",
+    "boral Workflow",
+    "Compare Models",
+    "Guides"
+  ]
+}

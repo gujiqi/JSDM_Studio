@@ -1,0 +1,21 @@
+{
+  "build": "HMSC S1-S7 real results workflow",
+  "timestamp": "2026-05-21T21:18:02.172484",
+  "source_zip": "JSDMWorkbench_WITH_HMSC_COMPLETE_RUN_FIX.zip",
+  "uploaded_scripts_used": [
+    "S1_define_models_template(3).R",
+    "S2_fit_models(3).R",
+    "S3_evaluate_convergence(3).R",
+    "S4_compute_model_fit(3).R",
+    "S5_show_model_fit(3).R",
+    "S6_show_parameter_estimates(3).R",
+    "S7_make_predictions(3).R"
+  ],
+  "changes": [
+    "Added run_hmsc_s1s7_pipeline() to app.R",
+    "HMSC run now executes S1 define, S2 fit, S3 convergence, S4 model fit, S5 model fit plots, S6 parameter estimates, S7 predictions when real workflow is enabled",
+    "HMSC real workflow checkbox is TRUE by default",
+    "Original uploaded S1-S7 scripts are copied into workflow_templates and run ZIP workflow_scripts",
+    "Outputs follow the uploaded S1-S7 naming style"
+  ]
+}

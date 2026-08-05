@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="sjSDM neural covariance engine">
+  <defs>
+    <linearGradient id="panel" x1="84" y1="76" x2="426" y2="428"><stop stop-color="#ffffff"/><stop offset=".55" stop-color="#eff6ff"/><stop offset="1" stop-color="#ccfbf1"/></linearGradient>
+    <linearGradient id="chip" x1="246" y1="120" x2="390" y2="318"><stop stop-color="#60a5fa"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+  </defs>
+  <ellipse cx="256" cy="455" rx="150" ry="30" fill="#0f172a" opacity=".12"/>
+  <rect x="86" y="78" width="340" height="332" rx="70" fill="url(#panel)" stroke="#b7d9d2" stroke-width="8"/>
+  <rect x="116" y="130" width="120" height="130" rx="26" fill="#ffffff" stroke="#b7d9d2" stroke-width="6"/>
+  <g stroke="#d7e7e3" stroke-width="5"><path d="M140 166h72M140 200h72M140 234h72M164 140v108M190 140v108"/></g>
+  <g fill="#2563eb"><rect x="145" y="146" width="14" height="14" rx="3"/><rect x="171" y="181" width="14" height="14" rx="3"/><rect x="197" y="215" width="14" height="14" rx="3"/></g>
+  <rect x="271" y="124" width="112" height="112" rx="26" fill="url(#chip)"/>
+  <g stroke="#ffffff" stroke-width="8" stroke-linecap="round"><path d="M300 162h54M300 198h54"/></g>
+  <g stroke="#9fbfd2" stroke-width="7" stroke-linecap="round"><path d="M143 332l65-42 65 42 65-42"/><path d="M208 290v84M273 332v42"/></g>
+  <g fill="#14b8a6"><circle cx="143" cy="332" r="22"/><circle cx="208" cy="290" r="22"/><circle cx="273" cy="332" r="22"/><circle cx="338" cy="290" r="22"/></g>
+  <circle cx="384" cy="342" r="22" fill="#f59e0b"/>
+</svg>

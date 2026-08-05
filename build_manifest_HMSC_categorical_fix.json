@@ -1,0 +1,13 @@
+{
+  "build": "HMSC categorical predictor fix",
+  "timestamp": "2026-05-21T21:29:45.416766",
+  "source_zip": "JSDMWorkbench_WITH_HMSC_S1S7_REAL_CODE_FIX.zip",
+  "fixed": [
+    "XData character columns are converted to factor before Hmsc()",
+    "TrData and studyDesign character columns are converted to factor where appropriate",
+    "Generated S1_define_models.R also converts categorical variables to factor",
+    "Validation messages now report detected categorical predictors",
+    "HMSC UI help text now states that categorical predictors are supported"
+  ],
+  "bug_from_user_log": "HMSC S1-S7 failed: XData variables had bad types: substrate:character"
+}

@@ -1,0 +1,7 @@
+修复内容：
+1. 修复 Error: could not find function "ul"
+2. 把进度步骤列表的 ul() 改为 tags$ul()
+3. 把进度栏中的 span() 改为 tags$span()
+
+使用：
+解压后进入 JSDM Studio，双击 run_app.bat。

@@ -1,0 +1,13 @@
+{
+  "build": "Hmsc jSDM GJAM spOccupancy sjSDM complete workflows",
+  "timestamp": "2026-05-18T20:33:10.103646",
+  "added": "sjSDM workflow, project recommendation, compare models support, external docs",
+  "sjSDM_files_included": [
+    "Help for package sjSDM.mhtml",
+    "Methods Ecol Evol - 2021 - Pichler - A new joint species distribution model for faster and more accurate inference of.pdf",
+    "s-jSDM-master.zip",
+    "sjSDM.pdf",
+    "sjSDM_ Getting started with sjSDM - a scalable joint Species Distribution Model.mhtml",
+    "sjSDM_1.0.7.tar.gz"
+  ]
+}

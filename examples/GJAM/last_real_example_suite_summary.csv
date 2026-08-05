@@ -1,0 +1,8 @@
+case_id,typeNames,exit_code,status,runtime_seconds,pass
+01_mixed_scales_default_formula_predict_sensitivity,"CON,PA,CA,DA,DA,OC,OC",0,fitted,0.79,TRUE
+02_DA_effort_random_FULL_notStandard,"DA,DA,DA,DA",0,fitted,0.62,TRUE
+03_CA_censor_holdout_conditional,"CA,CA,CA,CA",0,fitted,0.68,TRUE
+04_FC_composition_groups_ordination,"FC,FC,FC",0,fitted,0.61,TRUE
+05_CC_composition_groups_iie,"CC,CC,CC",0,fitted,0.61,TRUE
+06_CAT_categorical_safe_prior_skip,"CAT,CAT,CAT",0,fitted,0.86,TRUE
+07_traits_missing_trimY,"DA,DA,DA,DA",0,fitted,0.65,TRUE

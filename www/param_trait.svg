@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="species traits">
+  <defs>
+    <linearGradient id="ruler" x1="26" y1="26" x2="100" y2="103"><stop stop-color="#ffffff"/><stop offset=".55" stop-color="#e0f2fe"/><stop offset="1" stop-color="#93c5fd"/></linearGradient>
+    <linearGradient id="leaf" x1="26" y1="25" x2="81" y2="76"><stop stop-color="#dcfce7"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+  </defs>
+  <ellipse cx="65" cy="111" rx="38" ry="8" fill="#0f172a" opacity=".11"/>
+  <rect x="42" y="30" width="54" height="76" rx="12" transform="rotate(-13 69 68)" fill="url(#ruler)" stroke="#93b8d4" stroke-width="2.5"/>
+  <g stroke="#2563eb" stroke-width="3" stroke-linecap="round">
+    <path d="M52 43l11-3M56 57l18-5M60 71l11-3M64 86l18-5"/>
+  </g>
+  <path d="M34 33c23 2 34 15 31 36-22-2-34-15-31-36z" fill="url(#leaf)"/>
+  <path d="M43 43c10 7 16 15 21 27" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+  <circle cx="89" cy="34" r="9" fill="#f59e0b"/><circle cx="89" cy="34" r="4" fill="#fff7ed"/>
+</svg>

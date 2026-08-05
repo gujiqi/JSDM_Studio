@@ -1,0 +1,18 @@
+{
+  "build": "jSDM and Hmsc complete parameters/results",
+  "timestamp": "2026-05-18T18:44:42.063474",
+  "added_jsdm_sections": [
+    "function-specific settings",
+    "prediction settings",
+    "correlation and diagnostic settings",
+    "output table settings",
+    "jSDM result workflow and downloaded ZIP explanation"
+  ],
+  "jsdm_sources_considered": [
+    "jSDM package manual PDF 0.2.7",
+    "Get started with jSDM",
+    "Help for package jSDM",
+    "Bayesian inference methods",
+    "jSDM.R script"
+  ]
+}

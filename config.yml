@@ -1,0 +1,52 @@
+# JSDM Studio parameter configuration.
+# The GUI writes used_config.yml automatically; main.R can read this file for CLI runs.
+
+input:
+  Y: "input/Y.csv"
+  XData: "input/XData.csv"
+  TrData: ""
+  studyDesign: ""
+  coordinates: ""
+  phyloTree: ""
+
+model:
+  distr: "probit"
+  XFormula: "~ ."
+  TrFormula: "~ ."
+  use_traits: false
+  use_phylogeny: false
+
+random_effects:
+  # Supported modes: none, sample, spatial_full, spatial_nngp, spatial_gpp.
+  mode: "none"
+  random_effect_column: "sample"
+  longitude_column: "x"
+  latitude_column: "y"
+  spatial_method: "Full"
+  nNeighbours: 10
+
+mcmc:
+  samples: 100
+  transient: 50
+  thin: 1
+  nChains: 2
+  nParallel: 1
+  verbose: 50
+  seed: 123
+
+outputs:
+  save_model: true
+  compute_predicted_values: true
+  evaluate_model_fit: true
+  compute_cv: true
+  nfolds: 2
+  compute_waic: false
+  compute_diagnostics: true
+  compute_parameters: true
+  compute_variance_partitioning: true
+  compute_associations: true
+  make_predictions: true
+  make_report: true
+  support_level_beta: 0.95
+  support_level_gamma: 0.95
+  support_level_omega: 0.90

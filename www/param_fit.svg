@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="model fit experiment">
+  <defs>
+    <filter id="softShadow" x="-30%" y="-35%" width="165%" height="180%">
+      <feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#0f172a" flood-opacity=".16"/>
+    </filter>
+    <linearGradient id="glass" x1="32" y1="16" x2="90" y2="111">
+      <stop stop-color="#ffffff"/>
+      <stop offset=".55" stop-color="#dbeafe"/>
+      <stop offset="1" stop-color="#ccfbf1"/>
+    </linearGradient>
+    <linearGradient id="liquid" x1="38" y1="67" x2="90" y2="106">
+      <stop stop-color="#a7f3d0"/>
+      <stop offset=".5" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <g filter="url(#softShadow)">
+    <path d="M53 18h27v13l-8 13v15l27 43c4 7-1 15-9 15H42c-8 0-13-8-9-15l27-43V44L53 31z" fill="url(#glass)" stroke="#b6d9d2" stroke-width="2.6" stroke-linejoin="round"/>
+    <path d="M44 88c10-7 18 5 29-2 8-5 16-3 22 2l8 14c3 6-1 11-8 11H39c-7 0-11-6-8-11z" fill="url(#liquid)" opacity=".95"/>
+    <circle cx="55" cy="79" r="4.5" fill="#ffffff" opacity=".75"/>
+    <circle cx="78" cy="95" r="5" fill="#ffffff" opacity=".55"/>
+    <path d="M56 30h22" stroke="#64748b" stroke-width="4" stroke-linecap="round" opacity=".55"/>
+  </g>
+  <path d="M87 73l8 8 19-24" fill="none" stroke="#f59e0b" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="101" cy="32" r="7" fill="#2563eb" opacity=".9"/>
+</svg>

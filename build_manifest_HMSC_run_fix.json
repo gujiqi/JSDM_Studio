@@ -1,0 +1,10 @@
+{
+  "build": "HMSC run error fix",
+  "timestamp": "2026-05-21T21:12:00.045756",
+  "source_zip": "JSDMWorkbench_WITH_HMSC_COMPLETE.zip",
+  "fixed": [
+    "Fixed zero-row standard/effects_long.csv data.frame bug that caused: arguments imply differing number of rows: 1, 0",
+    "HMSC run now creates a diagnostic ZIP even when data validation fails",
+    "HMSC run summary now displays validation messages directly"
+  ]
+}

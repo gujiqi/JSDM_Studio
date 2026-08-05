@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="run workflow">
+  <defs>
+    <linearGradient id="play" x1="35" y1="23" x2="95" y2="101"><stop stop-color="#60a5fa"/><stop offset=".55" stop-color="#2dd4bf"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+  </defs>
+  <ellipse cx="64" cy="111" rx="38" ry="8" fill="#0f172a" opacity=".11"/>
+  <circle cx="64" cy="64" r="43" fill="#ffffff" stroke="#b7d9d2" stroke-width="3"/>
+  <path d="M54 42l37 22-37 22z" fill="url(#play)"/>
+  <path d="M27 44c7-10 17-17 29-20" stroke="#f59e0b" stroke-width="5" stroke-linecap="round"/>
+  <path d="M25 84c9 12 21 20 36 22" stroke="#14b8a6" stroke-width="5" stroke-linecap="round"/>
+</svg>

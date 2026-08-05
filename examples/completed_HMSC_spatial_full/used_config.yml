@@ -1,0 +1,27 @@
+engine: Hmsc
+model:
+  distr: probit
+  XFormula: ~ pH + moisture + canopy + substrate + elevation
+  TrFormula: ~ life_form + height_mm + reproduction
+  use_traits: yes
+  random_mode: spatial_full
+  spatial_method: Full
+  lon_col: longitude
+  lat_col: latitude
+  longlat: no
+  XScale: yes
+  YScale: no
+  TrScale: yes
+  truncateNumberOfFactors: yes
+  nNeighbours: 10.0
+  sKnot_file: ''
+mcmc:
+  samples: 2.0
+  transient: 1.0
+  thin: 1.0
+  nChains: 1.0
+  nParallel: 1.0
+  verbose: 0.0
+outputs:
+  predictions:
+    nfolds: 2.0

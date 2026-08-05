@@ -1,0 +1,12 @@
+{
+  "build": "HMSC S1-S7 real code fix",
+  "timestamp": "2026-05-21T21:24:14.202258",
+  "source_zip": "JSDMWorkbench_WITH_HMSC_S1S7_REAL_WORKFLOW.zip",
+  "fixed": [
+    "Fixed status not_started bug in run_hmsc_s1s7_pipeline",
+    "Writes diagnostics/HMSC_S1S7_error.txt on failure",
+    "Generates executable S1-S7 scripts into workflow_scripts",
+    "Copies input data into data/ for reproducible scripts",
+    "Keeps real HMSC S1-S7 workflow enabled by default"
+  ]
+}

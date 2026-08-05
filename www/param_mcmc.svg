@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="MCMC timing sampling">
+  <defs>
+    <filter id="softShadow" x="-30%" y="-35%" width="165%" height="180%">
+      <feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#0f172a" flood-opacity=".16"/>
+    </filter>
+    <linearGradient id="clock" x1="23" y1="17" x2="105" y2="107">
+      <stop stop-color="#ffffff"/>
+      <stop offset=".5" stop-color="#e0f2fe"/>
+      <stop offset="1" stop-color="#99f6e4"/>
+    </linearGradient>
+    <linearGradient id="trace" x1="29" y1="84" x2="103" y2="55">
+      <stop stop-color="#2563eb"/>
+      <stop offset=".5" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <g filter="url(#softShadow)">
+    <path d="M50 19h29" stroke="#2563eb" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="64" cy="66" r="45" fill="url(#clock)" stroke="#b6d9d2" stroke-width="3"/>
+    <circle cx="64" cy="66" r="32" fill="#ffffff" opacity=".88"/>
+    <path d="M64 39v27l19 12" stroke="#0f766e" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="64" cy="66" r="4.5" fill="#2563eb"/>
+  </g>
+  <path d="M26 85c9-20 15 14 25-4 9-18 16 13 25-3 8-14 15 5 25-13" fill="none" stroke="url(#trace)" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="100" cy="34" r="8" fill="#f59e0b"/>
+  <path d="M36 36l-6-6M92 96l7 7" stroke="#0f766e" stroke-width="4" stroke-linecap="round" opacity=".75"/>
+</svg>

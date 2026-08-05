@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="save model object">
+  <defs>
+    <linearGradient id="disk" x1="27" y1="19" x2="103" y2="105"><stop stop-color="#ffffff"/><stop offset=".5" stop-color="#dbeafe"/><stop offset="1" stop-color="#99f6e4"/></linearGradient>
+  </defs>
+  <ellipse cx="64" cy="111" rx="38" ry="8" fill="#0f172a" opacity=".11"/>
+  <path d="M30 20h58l16 16v68H30z" fill="url(#disk)" stroke="#b7d9d2" stroke-width="2.5" stroke-linejoin="round"/>
+  <rect x="43" y="26" width="41" height="26" rx="5" fill="#2563eb" opacity=".9"/>
+  <rect x="45" y="68" width="38" height="27" rx="8" fill="#ffffff" stroke="#b7d9d2" stroke-width="2"/>
+  <path d="M53 80h22" stroke="#0f766e" stroke-width="4" stroke-linecap="round"/>
+  <path d="M90 77l11 11 20-26" fill="none" stroke="#f59e0b" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

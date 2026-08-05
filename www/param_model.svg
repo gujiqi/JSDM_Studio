@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="model engine settings">
+  <defs>
+    <linearGradient id="cube" x1="29" y1="18" x2="101" y2="105"><stop stop-color="#ffffff"/><stop offset=".5" stop-color="#dbeafe"/><stop offset="1" stop-color="#99f6e4"/></linearGradient>
+    <linearGradient id="chip" x1="41" y1="37" x2="87" y2="83"><stop stop-color="#2dd4bf"/><stop offset="1" stop-color="#2563eb"/></linearGradient>
+  </defs>
+  <ellipse cx="64" cy="111" rx="38" ry="8" fill="#0f172a" opacity=".11"/>
+  <path d="M64 18l42 23v47l-42 24-42-24V41z" fill="url(#cube)" stroke="#b7d9d2" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M22 41l42 24 42-24M64 65v47" fill="none" stroke="#9fbfd2" stroke-width="2.5" stroke-linejoin="round"/>
+  <rect x="43" y="39" width="42" height="42" rx="12" fill="url(#chip)"/>
+  <g fill="#ffffff"><circle cx="54" cy="52" r="4"/><circle cx="74" cy="52" r="4"/><circle cx="64" cy="68" r="4"/></g>
+  <g stroke="#ffffff" stroke-width="3" stroke-linecap="round"><path d="M58 54l6 11 6-11"/></g>
+  <path d="M96 90l10 10M106 90l-10 10" stroke="#f59e0b" stroke-width="5" stroke-linecap="round"/>
+</svg>

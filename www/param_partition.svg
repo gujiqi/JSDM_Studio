@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="variance partitioning">
+  <defs>
+    <linearGradient id="a" x1="28" y1="22" x2="81" y2="82"><stop stop-color="#60a5fa"/><stop offset="1" stop-color="#2563eb"/></linearGradient>
+    <linearGradient id="b" x1="58" y1="25" x2="105" y2="95"><stop stop-color="#5eead4"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+  </defs>
+  <ellipse cx="64" cy="111" rx="39" ry="8" fill="#0f172a" opacity=".11"/>
+  <circle cx="64" cy="62" r="42" fill="#ffffff" stroke="#b7d9d2" stroke-width="3"/>
+  <path d="M64 62V20a42 42 0 0 1 38 60z" fill="url(#b)"/>
+  <path d="M64 62l38 18a42 42 0 0 1-71 15z" fill="#f59e0b"/>
+  <path d="M64 62L31 95a42 42 0 0 1 33-75z" fill="url(#a)"/>
+  <circle cx="64" cy="62" r="14" fill="#ffffff" opacity=".9"/>
+  <path d="M64 48v28M50 62h28" stroke="#0f766e" stroke-width="4" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,12 @@
+{
+  "build": "Hmsc jSDM GJAM spOccupancy sjSDM boral complete workflows",
+  "timestamp": "2026-05-18T20:56:27.118704",
+  "added": "boral workflow, project recommendation, compare models support, external docs",
+  "boral_files_included": [
+    "Help for package boral.mhtml",
+    "Methods Ecol Evol - 2015 - Hui - boral   Bayesian Ordination and Regression Analysis of Multivariate Abundance Data in r.pdf",
+    "boral-master.zip",
+    "boral.pdf",
+    "boral_2.0.3.tar.gz"
+  ]
+}

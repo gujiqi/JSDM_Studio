@@ -1,0 +1,24 @@
+{
+  "build": "HMSC complete workflow added",
+  "timestamp": "2026-05-21T21:03:08.611767",
+  "base_zip": "JSDMWorkbench_NO_Hmsc_PANEL.zip",
+  "added": [
+    "Hmsc Workflow tab placed before jSDM",
+    "Detailed Hmsc parameters and examples",
+    "Hmsc data/settings validator",
+    "Hmsc output S1-S7 workflow scripts",
+    "Hmsc standard comparison tables",
+    "External HMSC package/docs copied"
+  ],
+  "external_files": [
+    "HMSC-master(4).zip",
+    "Help for package Hmsc(1).mhtml",
+    "Hmsc (1)(3).pdf",
+    "vignette_1_univariate(3).pdf",
+    "vignette_2_multivariate_low(3).pdf",
+    "vignette_3_multivariate_high(3).pdf",
+    "vignette_4_spatial(3).pdf",
+    "vignette_5_performance(3).pdf",
+    "结果运行流程按照这个来.zip"
+  ]
+}

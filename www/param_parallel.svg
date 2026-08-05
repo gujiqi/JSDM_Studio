@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="parallel computing">
+  <defs>
+    <linearGradient id="chip" x1="25" y1="18" x2="101" y2="106"><stop stop-color="#ffffff"/><stop offset=".5" stop-color="#e0f2fe"/><stop offset="1" stop-color="#ccfbf1"/></linearGradient>
+  </defs>
+  <ellipse cx="64" cy="111" rx="39" ry="8" fill="#0f172a" opacity=".11"/>
+  <rect x="29" y="24" width="70" height="70" rx="18" fill="url(#chip)" stroke="#b7d9d2" stroke-width="2.5"/>
+  <g stroke="#94a3b8" stroke-width="4" stroke-linecap="round">
+    <path d="M22 39h12M22 56h12M22 73h12M94 39h12M94 56h12M94 73h12"/>
+    <path d="M45 17v12M64 17v12M83 17v12M45 89v12M64 89v12M83 89v12"/>
+  </g>
+  <g fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M45 45h31l-8-8" stroke="#2563eb"/>
+    <path d="M45 63h38l-8-8" stroke="#0f766e"/>
+    <path d="M45 81h25l-8-8" stroke="#f59e0b"/>
+  </g>
+</svg>

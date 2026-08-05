@@ -1,0 +1,18 @@
+{
+  "build": "Hmsc jSDM GJAM spOccupancy complete workflows",
+  "timestamp": "2026-05-18T19:46:00.148244",
+  "added": "spOccupancy workflow, project recommendation, compare models support, external docs",
+  "spOccupancy_files_included": [
+    "Single-Species, Multi-Species, and Integrated Spatial Occupancy Models • spOccupancy.mhtml",
+    "README.mhtml",
+    "Help for package spOccupancy.mhtml",
+    "spOccupancy.pdf",
+    "mcmcSamplers.pdf",
+    "mcmcFactorModels.pdf",
+    "mcmcSVCModels.pdf",
+    "Doser_etal_2021_spOccupancy-main.zip",
+    "spOccupancy-main.zip",
+    "Doser_etal_2022_MEE_A-v0.1.0.zip",
+    "Methods Ecol Evol - 2022 - Doser - spOccupancy  An R package for single‐species  multi‐species  and integrated spatial.pdf"
+  ]
+}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="MCMC chains">
+  <defs>
+    <linearGradient id="a" x1="23" y1="37" x2="68" y2="88"><stop stop-color="#bfdbfe"/><stop offset="1" stop-color="#2563eb"/></linearGradient>
+    <linearGradient id="b" x1="59" y1="35" x2="106" y2="90"><stop stop-color="#99f6e4"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+  </defs>
+  <ellipse cx="64" cy="111" rx="38" ry="8" fill="#0f172a" opacity=".11"/>
+  <g fill="none" stroke-linecap="round" stroke-width="13">
+    <path d="M33 72l22-22c9-9 24 5 15 15L58 77c-9 9-24-5-15-15" stroke="url(#a)"/>
+    <path d="M70 72l22-22c9-9 24 5 15 15L95 77c-9 9-24-5-15-15" stroke="url(#b)"/>
+  </g>
+  <path d="M55 64h31" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="30" cy="37" r="8" fill="#f59e0b"/><circle cx="101" cy="92" r="8" fill="#2dd4bf"/>
+</svg>

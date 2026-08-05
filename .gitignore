@@ -1,0 +1,58 @@
+# Runtime outputs
+output/
+diagnostics/
+input/
+models/
+tables/
+plots/
+predictions/
+report/
+results/
+chains/
+missing_data/
+ordination/
+sensitivity/
+standard/
+
+# Installer and compiled launcher artifacts
+installer/output/
+launcher_build/
+webview2_launcher/bin/
+webview2_launcher/obj/
+JSDMStudioLauncher.exe
+JSDMStudioLauncher.dll
+JSDMStudioLauncher.pdb
+JSDMStudioLauncher.deps.json
+JSDMStudioLauncher.runtimeconfig.json
+Microsoft.Web.WebView2*.dll
+WebView2Loader.dll
+*.exe.WebView2/
+
+# Temporary and smoke-test files
+*.log
+*.err
+*.out
+*.tmp
+tmp_*
+http_smoke*.html
+RUN_FAILED.txt
+startup_log.txt
+
+# Python/R caches
+__pycache__/
+*.pyc
+*.pyo
+.Rhistory
+.RData
+.Ruserdata
+
+# Large archives should be uploaded as GitHub Releases, not committed
+*.zip
+*.7z
+*.tar
+*.tar.gz
+*.tgz
+
+# Historical local backups
+app_before*
+app_Hmsc_original_backup.R

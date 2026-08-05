@@ -1,0 +1,23 @@
+JSDM Studio 生成安装包检查表
+
+[ ] 1. 已安装 R for Windows
+[ ] 2. 已安装 Inno Setup
+[ ] 3. 已安装 .NET SDK
+[ ] 4. 解压 ZIP
+[ ] 5. 进入 JSDMStudio 文件夹
+[ ] 6. 双击 install_packages.bat
+[ ] 7. 双击 Build_WebView2_Launcher.bat
+[ ] 8. 确认生成 JSDMStudioLauncher.exe 和相关 DLL/json 文件
+[ ] 9. 双击 Start_WebView2_Window.bat 测试窗口
+[ ] 10. 如果窗口正常，进入 JSDMStudio\installer
+[ ] 11. 双击 build_installer.bat
+[ ] 12. 找到 JSDMStudio\installer\output\JSDMStudio_Setup.exe
+[ ] 13. 双击 JSDMStudio_Setup.exe 测试安装
+[ ] 14. 双击桌面 JSDM Studio 图标测试启动
+[ ] 15. 用示例数据跑一次最小测试
+
+最终发给用户：
+JSDMStudio_Setup.exe
+
+告诉用户：
+先安装 R for Windows。

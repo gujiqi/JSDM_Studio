@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="spOccupancy detection engine">
+  <defs>
+    <linearGradient id="panel" x1="86" y1="78" x2="426" y2="424"><stop stop-color="#ffffff"/><stop offset=".55" stop-color="#e0f2fe"/><stop offset="1" stop-color="#ccfbf1"/></linearGradient>
+    <linearGradient id="pin" x1="304" y1="102" x2="394" y2="282"><stop stop-color="#60a5fa"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+  </defs>
+  <ellipse cx="256" cy="455" rx="150" ry="30" fill="#0f172a" opacity=".12"/>
+  <rect x="86" y="78" width="340" height="332" rx="70" fill="url(#panel)" stroke="#b7d9d2" stroke-width="8"/>
+  <path d="M108 217c59-78 202-78 261 0-59 80-202 80-261 0z" fill="#ffffff" stroke="#0f766e" stroke-width="12"/>
+  <circle cx="238" cy="217" r="52" fill="#60a5fa"/><circle cx="238" cy="217" r="22" fill="#0f766e"/>
+  <path d="M352 104c-45 0-81 36-81 81 0 62 81 141 81 141s81-79 81-141c0-45-36-81-81-81z" fill="url(#pin)" opacity=".95"/>
+  <circle cx="352" cy="185" r="27" fill="#ffffff"/>
+  <g fill="#f59e0b"><circle cx="145" cy="344" r="20"/><circle cx="238" cy="364" r="20"/><circle cx="331" cy="344" r="20"/></g>
+  <g stroke="#94a3b8" stroke-width="10" stroke-linecap="round"><path d="M145 320v-38"/><path d="M238 340v-43"/><path d="M331 320v-38"/></g>
+</svg>

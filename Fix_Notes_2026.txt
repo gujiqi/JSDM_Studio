@@ -1,0 +1,2 @@
+本版本修复了 app.R 中 b() 标签导致的启动错误：could not find function 'b'。
+请解压后双击 run_app.bat。

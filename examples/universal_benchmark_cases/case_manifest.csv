@@ -1,0 +1,8 @@
+"case","path","n_sites","n_species","n_visits","seed","file_count"
+"case_01_forest_gradient_presence","C:\Users\Google\Documents\CodeX\JSDMStudio_BIG_WITH_HMSCHPC_WORK_20260530\JSDMStudio\examples\universal_benchmark_cases\case_01_forest_gradient_presence","36","6","3","20260611","28"
+"case_02_wetland_detection_replicates","C:\Users\Google\Documents\CodeX\JSDMStudio_BIG_WITH_HMSCHPC_WORK_20260530\JSDMStudio\examples\universal_benchmark_cases\case_02_wetland_detection_replicates","34","6","4","20260612","28"
+"case_03_alpine_categorical_substrate","C:\Users\Google\Documents\CodeX\JSDMStudio_BIG_WITH_HMSCHPC_WORK_20260530\JSDMStudio\examples\universal_benchmark_cases\case_03_alpine_categorical_substrate","38","7","3","20260613","28"
+"case_04_coastal_phylogeny_traits","C:\Users\Google\Documents\CodeX\JSDMStudio_BIG_WITH_HMSCHPC_WORK_20260530\JSDMStudio\examples\universal_benchmark_cases\case_04_coastal_phylogeny_traits","32","5","3","20260614","28"
+"case_05_grassland_count_offset","C:\Users\Google\Documents\CodeX\JSDMStudio_BIG_WITH_HMSCHPC_WORK_20260530\JSDMStudio\examples\universal_benchmark_cases\case_05_grassland_count_offset","40","8","3","20260615","28"
+"case_06_restoration_newsite_prediction","C:\Users\Google\Documents\CodeX\JSDMStudio_BIG_WITH_HMSCHPC_WORK_20260530\JSDMStudio\examples\universal_benchmark_cases\case_06_restoration_newsite_prediction","36","7","5","20260616","28"
+"case_07_small_publication_smoke","C:\Users\Google\Documents\CodeX\JSDMStudio_BIG_WITH_HMSCHPC_WORK_20260530\JSDMStudio\examples\universal_benchmark_cases\case_07_small_publication_smoke","30","5","3","20260617","28"

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 360" role="img" aria-label="JSDM Studio reproducible workflow">
+  <defs>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffffff"/><stop offset=".56" stop-color="#eff6ff"/><stop offset="1" stop-color="#ccfbf1"/></linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#5eead4"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#93c5fd"/><stop offset="1" stop-color="#2563eb"/></linearGradient>
+  </defs>
+  <ellipse cx="590" cy="318" rx="490" ry="18" fill="#0f172a" opacity=".08"/>
+  <g fill="none" stroke="#a7dccc" stroke-width="4" stroke-linecap="round" opacity=".7">
+    <path d="M192 180h86"/><path d="M412 180h86"/><path d="M632 180h86"/><path d="M852 180h86"/>
+  </g>
+  <g fill="#0f766e" opacity=".55"><path d="M279 180l-15-9v18z"/><path d="M499 180l-15-9v18z"/><path d="M719 180l-15-9v18z"/><path d="M939 180l-15-9v18z"/></g>
+  <g font-family="Inter,Segoe UI,Arial,sans-serif">
+    <g transform="translate(40 70)">
+      <rect width="150" height="220" rx="28" fill="url(#card)" stroke="#dbe5f0" stroke-width="2"/>
+      <path d="M38 76h28l8 11h10l8-11h28v42H38z" fill="#ffffff" stroke="#b7d9d2" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M75 88V35" stroke="url(#teal)" stroke-width="8" stroke-linecap="round"/>
+      <path d="M58 51l17-17 17 17" fill="none" stroke="url(#teal)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="75" y="150" text-anchor="middle" fill="#0f172a" font-size="20" font-weight="850">Upload</text>
+      <text x="75" y="177" text-anchor="middle" fill="#64748b" font-size="13">Y, XData, traits</text>
+      <text x="75" y="196" text-anchor="middle" fill="#64748b" font-size="13">and coordinates</text>
+    </g>
+    <g transform="translate(260 70)">
+      <rect width="150" height="220" rx="28" fill="url(#card)" stroke="#dbe5f0" stroke-width="2"/>
+      <circle cx="68" cy="70" r="32" fill="#ffffff" stroke="#0f766e" stroke-width="5"/>
+      <path d="M91 93l28 28" stroke="#0f766e" stroke-width="8" stroke-linecap="round"/>
+      <path d="M55 70l10 10 23-29" fill="none" stroke="#2563eb" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="75" y="150" text-anchor="middle" fill="#0f172a" font-size="20" font-weight="850">Check</text>
+      <text x="75" y="177" text-anchor="middle" fill="#64748b" font-size="13">dimensions, formula</text>
+      <text x="75" y="196" text-anchor="middle" fill="#64748b" font-size="13">family and factors</text>
+    </g>
+    <g transform="translate(480 70)">
+      <rect width="150" height="220" rx="28" fill="url(#card)" stroke="#dbe5f0" stroke-width="2"/>
+      <rect x="43" y="35" width="64" height="64" rx="18" fill="url(#teal)"/>
+      <g fill="#ffffff"><circle cx="59" cy="54" r="5"/><circle cx="91" cy="54" r="5"/><circle cx="75" cy="78" r="5"/></g>
+      <path d="M65 56l10 18 10-18" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+      <text x="75" y="150" text-anchor="middle" fill="#0f172a" font-size="20" font-weight="850">Fit</text>
+      <text x="75" y="177" text-anchor="middle" fill="#64748b" font-size="13">engine-specific</text>
+      <text x="75" y="196" text-anchor="middle" fill="#64748b" font-size="13">JSDM models</text>
+    </g>
+    <g transform="translate(700 70)">
+      <rect width="150" height="220" rx="28" fill="url(#card)" stroke="#dbe5f0" stroke-width="2"/>
+      <path d="M43 101V47M43 101h66" stroke="#94a3b8" stroke-width="5" stroke-linecap="round"/>
+      <path d="M51 88c10-28 17 14 30-7 10-17 17 9 29-16" fill="none" stroke="url(#blue)" stroke-width="6" stroke-linecap="round"/>
+      <path d="M93 44l10 10 22-29" fill="none" stroke="#0f766e" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="75" y="150" text-anchor="middle" fill="#0f172a" font-size="20" font-weight="850">Diagnose</text>
+      <text x="75" y="177" text-anchor="middle" fill="#64748b" font-size="13">convergence, fit</text>
+      <text x="75" y="196" text-anchor="middle" fill="#64748b" font-size="13">and predictions</text>
+    </g>
+    <g transform="translate(920 70)">
+      <rect width="220" height="220" rx="28" fill="url(#card)" stroke="#dbe5f0" stroke-width="2"/>
+      <path d="M72 65l38-21 38 21v45l-38 23-38-23z" fill="#ffffff" stroke="#b7d9d2" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M72 65l38 23 38-23M110 88v45" fill="none" stroke="#9fbfd2" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M137 108h25M162 108l-11-11M162 108l-11 11" stroke="#f59e0b" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="110" y="150" text-anchor="middle" fill="#0f172a" font-size="20" font-weight="850">Export</text>
+      <text x="110" y="177" text-anchor="middle" fill="#64748b" font-size="13">config, scripts, tables</text>
+      <text x="110" y="196" text-anchor="middle" fill="#64748b" font-size="13">report and ZIP</text>
+    </g>
+  </g>
+</svg>

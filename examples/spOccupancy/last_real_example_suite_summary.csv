@@ -1,0 +1,8 @@
+case_id,model_type,exit_code,status,runtime_seconds,pass
+01_PGOcc_single_predict_ppc_waic,PGOcc,0,fitted,1.04,TRUE
+02_spPGOcc_spatial_NNGP,spPGOcc,0,fitted,1.12,TRUE
+03_msPGOcc_multispecies,msPGOcc,0,fitted,1.05,TRUE
+04_spMsPGOcc_spatial_multispecies,spMsPGOcc,0,fitted,1.17,TRUE
+05_lfMsPGOcc_latent_factor,lfMsPGOcc,0,fitted,1.16,TRUE
+06_intPGOcc_integrated_sources,intPGOcc,0,fitted,1.13,TRUE
+07_svcPGOcc_spatial_varying_coefficients,svcPGOcc,0,fitted,1.7,TRUE

@@ -1,0 +1,10 @@
+{
+  "build": "Project and Compare Models Fix",
+  "timestamp": "2026-05-18T19:13:32.391655",
+  "changes": [
+    "Project page now useful with n/S/Q and data structure settings",
+    "Project guidance saved to used_config.yml",
+    "Compare Models includes GJAM",
+    "Comparison CSV download added"
+  ]
+}

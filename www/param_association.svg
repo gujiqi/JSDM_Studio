@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="species association network">
+  <defs>
+    <linearGradient id="n1" x1="20" y1="20" x2="100" y2="98"><stop stop-color="#93c5fd"/><stop offset="1" stop-color="#2563eb"/></linearGradient>
+    <linearGradient id="n2" x1="24" y1="30" x2="103" y2="104"><stop stop-color="#5eead4"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+  </defs>
+  <ellipse cx="64" cy="111" rx="39" ry="8" fill="#0f172a" opacity=".11"/>
+  <g stroke="#9fbfd2" stroke-width="4" stroke-linecap="round" opacity=".95">
+    <path d="M36 45l31-18 28 26-12 33-39 4z"/>
+    <path d="M36 45l47 41M67 27l16 59M95 53L44 90"/>
+  </g>
+  <circle cx="36" cy="45" r="13" fill="url(#n2)"/>
+  <circle cx="67" cy="27" r="12" fill="url(#n1)"/>
+  <circle cx="95" cy="53" r="13" fill="#f59e0b"/>
+  <circle cx="83" cy="86" r="13" fill="#14b8a6"/>
+  <circle cx="44" cy="90" r="12" fill="#60a5fa"/>
+  <g fill="#ffffff" opacity=".9"><circle cx="36" cy="45" r="4"/><circle cx="67" cy="27" r="4"/><circle cx="95" cy="53" r="4"/><circle cx="83" cy="86" r="4"/><circle cx="44" cy="90" r="4"/></g>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="model formula">
+  <defs>
+    <linearGradient id="paper" x1="24" y1="18" x2="101" y2="108"><stop stop-color="#ffffff"/><stop offset=".55" stop-color="#eff6ff"/><stop offset="1" stop-color="#ccfbf1"/></linearGradient>
+    <linearGradient id="curve" x1="28" y1="85" x2="100" y2="39"><stop stop-color="#2563eb"/><stop offset="1" stop-color="#14b8a6"/></linearGradient>
+  </defs>
+  <ellipse cx="64" cy="111" rx="39" ry="8" fill="#0f172a" opacity=".11"/>
+  <rect x="24" y="18" width="80" height="88" rx="16" fill="url(#paper)" stroke="#b7d9d2" stroke-width="2.5"/>
+  <path d="M37 83c11-30 20-37 31-14 8 17 15 11 24-18" fill="none" stroke="url(#curve)" stroke-width="7" stroke-linecap="round"/>
+  <g font-family="Segoe UI,Arial,sans-serif" font-weight="800" fill="#0f766e">
+    <text x="35" y="45" font-size="20">f</text>
+    <text x="47" y="45" font-size="14">(x)</text>
+  </g>
+  <path d="M35 94h58" stroke="#bfdbfe" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="92" cy="38" r="8" fill="#f59e0b"/>
+</svg>

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Hmsc-HPC CPU workflow">
+  <defs>
+    <linearGradient id="bg" x1="90" y1="70" x2="420" y2="430"><stop stop-color="#ffffff"/><stop offset=".55" stop-color="#dbeafe"/><stop offset="1" stop-color="#ccfbf1"/></linearGradient>
+    <linearGradient id="chip" x1="150" y1="130" x2="370" y2="350"><stop stop-color="#5eead4"/><stop offset="1" stop-color="#2563eb"/></linearGradient>
+    <linearGradient id="leaf" x1="80" y1="180" x2="220" y2="370"><stop stop-color="#99f6e4"/><stop offset="1" stop-color="#0f766e"/></linearGradient>
+  </defs>
+  <ellipse cx="256" cy="455" rx="152" ry="30" fill="#0f172a" opacity=".12"/>
+  <rect x="72" y="64" width="368" height="368" rx="96" fill="url(#bg)" stroke="#b7d9d2" stroke-width="8"/>
+  <rect x="166" y="144" width="180" height="180" rx="34" fill="#ffffff" stroke="#b7d9d2" stroke-width="7"/>
+  <rect x="196" y="174" width="120" height="120" rx="24" fill="url(#chip)"/>
+  <g stroke="#0f766e" stroke-width="8" stroke-linecap="round">
+    <path d="M166 184h-38M166 224h-38M166 264h-38M346 184h38M346 224h38M346 264h38"/>
+    <path d="M216 144v-38M256 144v-38M296 144v-38M216 324v38M256 324v38M296 324v38"/>
+  </g>
+  <g fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M222 235h68"/>
+    <path d="M256 198v74"/>
+    <path d="M229 207c22 14 45 14 67 0"/>
+    <path d="M229 265c22-14 45-14 67 0"/>
+  </g>
+  <path d="M132 346c-35-8-56-34-58-76 45 3 70 30 58 76z" fill="url(#leaf)"/>
+  <path d="M118 298c21 19 34 35 43 62" stroke="#ffffff" stroke-width="9" stroke-linecap="round" opacity=".85"/>
+  <g fill="#ffffff" stroke="#0f766e" stroke-width="7">
+    <circle cx="383" cy="142" r="26"/>
+    <circle cx="415" cy="218" r="26"/>
+    <circle cx="382" cy="296" r="26"/>
+  </g>
+  <path d="M383 168v24M402 218h-24M383 270v-26" stroke="#0f766e" stroke-width="8" stroke-linecap="round"/>
+</svg>

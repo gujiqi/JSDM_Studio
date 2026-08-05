@@ -1,0 +1,13 @@
+{
+  "build": "Hmsc jSDM GJAM complete workflows",
+  "timestamp": "2026-05-18T19:05:58.338213",
+  "added": "GJAM Workflow with data upload, check, model settings, response types, composition, priors/censoring, prediction/sensitivity/ordination, outputs, results explanation",
+  "gjam_files_included": [
+    "gjam-master.zip",
+    "gjam_2.7.zip",
+    "gjam.pdf",
+    "Help for package gjam.mhtml",
+    "ecm1241-sup-0001-appendixs1.pdf",
+    "Ecological Monographs - 2016 - Clark - Generalized joint attribute modeling for biodiversity analysis  median‐zero .pdf"
+  ]
+}

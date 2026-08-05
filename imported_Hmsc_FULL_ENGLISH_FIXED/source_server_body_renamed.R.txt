@@ -1,0 +1,264 @@
+
+  # ---- Imported FULL_ENGLISH_FIXED Hmsc server logic START ----
+
+  rv_hmsc_fixed <- reactiveValues(
+    log = "Waiting for uploaded data.We recommend testing with example data first.",
+    outdir = NULL,
+    check_result = "Data have not been checked yet.",
+    progress = 0,
+    stage = "Waiting to start",
+    eta = "unknown",
+    elapsed = "0 sec",
+    detail = "",
+    step = 0,
+    start_time = NULL,
+    estimate_total_sec = NA_real_
+  )
+
+  # bind"slider + numbernumeric box".RunwhenReadright-sidenumbernumeric box, thereforecanenter a customvalue.
+  for (id in c("nNeighbours", "samples", "transient", "thin", "nChains",
+               "nParallel", "verbose", "seed", "nfolds",
+               "support_beta", "support_gamma", "support_omega")) {
+    max_slider <- switch(id,
+      nNeighbours = 50, samples = 5000, transient = 10000, thin = 100,
+      nChains = 8, nParallel = 8, verbose = 5000, seed = 9999,
+      nfolds = 10, support_beta = 0.99, support_gamma = 0.99,
+      support_omega = 0.99, NULL
+    )
+    min_value <- switch(id,
+      transient = 0, support_beta = 0.5, support_gamma = 0.5,
+      support_omega = 0.5, nfolds = 2, 1
+    )
+    bind_slider_number(input, session, id, min_value = min_value, max_slider = max_slider)
+  }
+
+
+  add_log <- function(txt) {
+    rv_hmsc_fixed$log <- paste(rv_hmsc_fixed$log, paste0(format(Sys.time(), "%H:%M:%S"), "  ", txt), sep = "\n")
+  }
+
+  estimate_runtime_seconds <- function(Y = NULL, XData = NULL, cfg = NULL) {
+    # This is a rough estimate, is notprecise timing.Hmsc time cost depends onspeciesnumber, sampling unitsnumber, Random effects, Cross-validationandcomputer performanceeffectlarge.
+    ns <- if (!is.null(Y)) ncol(Y) else 8
+    ny <- if (!is.null(Y)) nrow(Y) else 30
+    nc <- if (!is.null(XData)) ncol(XData) else 5
+    samples <- if (!is.null(cfg)) cfg$mcmc$samples else num_value(input, 'samples', 100)
+    transient <- if (!is.null(cfg)) cfg$mcmc$transient else num_value(input, 'transient', 50)
+    thin <- if (!is.null(cfg)) cfg$mcmc$thin else num_value(input, 'thin', 1)
+    nChains <- if (!is.null(cfg)) cfg$mcmc$nChains else num_value(input, 'nChains', 2)
+    iter <- transient + samples * thin
+
+    # Basic estimate: test data usually finish within tens of seconds; large datasets can take much longer.
+    sec <- 8 + (ny * ns * max(1, nc) * iter * nChains) / 75000
+
+    # Random effects, Spatial, additionalOutputweighted
+    if (input$random_mode == "sample") sec <- sec * 1.25
+    if (input$random_mode == "spatial") sec <- sec * 2.2
+    if (isTRUE(input$compute_cv)) sec <- sec + sec * (num_value(input, 'nfolds', 2) %||% 2) * 0.8
+    if (isTRUE(input$compute_waic)) sec <- sec + sec * 0.35
+    if (isTRUE(input$compute_parameters)) sec <- sec + 8 + ns * 0.8
+    if (isTRUE(input$compute_vp)) sec <- sec + 6 + ns * 0.3
+    if (isTRUE(input$compute_assoc)) sec <- sec + 5 + ns * ns / 20
+    if (isTRUE(input$make_predictions)) sec <- sec + 10 + max(1, nc) * 6
+
+    # Windows localLaunch/plotfiguresoverhead
+    sec + 5
+  }
+
+  update_progress <- function(percent, stage, step = NULL, detail = "") {
+    rv_hmsc_fixed$progress <- max(0, min(100, round(percent)))
+    rv_hmsc_fixed$stage <- stage
+    if (!is.null(step)) rv_hmsc_fixed$step <- step
+    if (!is.null(rv_hmsc_fixed$start_time)) {
+      elapsed <- as.numeric(difftime(Sys.time(), rv_hmsc_fixed$start_time, units = "secs"))
+      rv_hmsc_fixed$elapsed <- format_seconds_cn(elapsed)
+      if (is.finite(rv_hmsc_fixed$estimate_total_sec)) {
+        remain <- max(0, rv_hmsc_fixed$estimate_total_sec * (1 - rv_hmsc_fixed$progress/100))
+        rv_hmsc_fixed$eta <- format_seconds_cn(remain)
+      }
+    }
+    rv_hmsc_fixed$detail <- detail
+  }
+
+  output$log <- renderText(rv_hmsc_fixed$log)
+  output$check_result <- renderText(rv_hmsc_fixed$check_result)
+
+  output$pre_run_estimate <- renderUI({
+    Y <- NULL; XData <- NULL
+    if (!is.null(input$Y_file)) Y <- tryCatch(get_Y(), error = function(e) NULL)
+    if (!is.null(input$X_file)) XData <- tryCatch(get_X(), error = function(e) NULL)
+    sec <- estimate_runtime_seconds(Y, XData)
+    div(class = "eta-card",
+        tags$b("⏱️ Currentsettingsrough estimate: "),
+        format_seconds_cn(sec),
+        tags$br(),
+        tags$small("This is based onsampling unitsnumber, speciesnumber, MCMC settingsandcheckedOutputestimated, is notprecise timing.MCMC Runinterface whenmaydoes not step throughsecRefresh."))
+  })
+
+  output$progress_panel <- renderUI({
+    progress_panel(rv_hmsc_fixed$progress, rv_hmsc_fixed$stage, rv_hmsc_fixed$eta, rv_hmsc_fixed$elapsed, rv_hmsc_fixed$detail)
+  })
+
+  output$step_list <- renderUI({
+    step_list_panel(rv_hmsc_fixed$step)
+  })
+
+  get_Y <- reactive({ req(input$Y_file); read_uploaded_csv(input$Y_file, "Y.csv") })
+  get_X <- reactive({ req(input$X_file); read_uploaded_csv(input$X_file, "XData.csv") })
+  get_Tr <- reactive({ if (is.null(input$Tr_file)) return(NULL); read_uploaded_csv(input$Tr_file, "TrData.csv") })
+
+  output$Y_preview <- renderDT({
+    req(input$Y_file)
+    datatable(head(get_Y(), 12), options = list(scrollX = TRUE, pageLength = 6), rownames = TRUE)
+  })
+  output$X_preview <- renderDT({
+    req(input$X_file)
+    datatable(head(get_X(), 12), options = list(scrollX = TRUE, pageLength = 6), rownames = TRUE)
+  })
+  output$Tr_preview <- renderDT({
+    if (is.null(input$Tr_file)) {
+      datatable(data.frame(Tip = "notupload traits.csv; IfIgnore this if no trait model is used."), options = list(dom = "t"))
+    } else {
+      datatable(head(get_Tr(), 12), options = list(scrollX = TRUE, pageLength = 6), rownames = TRUE)
+    }
+  })
+
+  output$metric_y <- renderUI({
+    if (is.null(input$Y_file)) return(metric_card("🧫", "Y matrix", "-", "Not uploaded yet"))
+    Y <- get_Y(); metric_card("🧫", "Y matrix", paste0(nrow(Y), "×", ncol(Y)), "sampling units × species")
+  })
+  output$metric_x <- renderUI({
+    if (is.null(input$X_file)) return(metric_card("🌡️", "XData", "-", "Not uploaded yet"))
+    X <- get_X(); metric_card("🌡️", "XData", paste0(nrow(X), "×", ncol(X)), "sampling units × variables")
+  })
+  output$metric_sp <- renderUI({
+    if (is.null(input$Y_file)) return(metric_card("🌱", "speciesnumber", "-", "Waiting Y"))
+    Y <- get_Y(); metric_card("🌱", "speciesnumber", ncol(Y), "Y ofcolumnsnumber")
+  })
+  output$metric_status <- renderUI({
+    metric_card("📌", "status", if (is.null(rv_hmsc_fixed$outdir)) "Waiting to run" else "Output generated",
+                if (is.null(rv_hmsc_fixed$outdir)) "First check data" else basename(rv_hmsc_fixed$outdir))
+  })
+
+  make_cfg <- reactive({
+    list(
+      model = list(
+        distr = input$distr,
+        XFormula = input$XFormula,
+        TrFormula = input$TrFormula,
+        use_traits = input$use_traits,
+        use_phylogeny = input$use_phylogeny
+      ),
+      random_effects = list(
+        mode = input$random_mode,
+        random_effect_column = input$random_col,
+        longitude_column = input$x_col,
+        latitude_column = input$y_col,
+        spatial_method = input$spatial_method,
+        nNeighbours = num_value(input, 'nNeighbours', 10)
+      ),
+      mcmc = list(
+        samples = num_value(input, 'samples', 100), transient = num_value(input, 'transient', 50), thin = num_value(input, 'thin', 1),
+        nChains = num_value(input, 'nChains', 2), nParallel = num_value(input, 'nParallel', 1),
+        verbose = num_value(input, 'verbose', 50), seed = num_value(input, 'seed', 123)
+      ),
+      outputs = list(
+        save_model = input$save_model,
+        compute_predicted_values = input$compute_pred,
+        evaluate_model_fit = input$evaluate_fit,
+        compute_cv = input$compute_cv,
+        nfolds = num_value(input, 'nfolds', 2),
+        compute_waic = input$compute_waic,
+        compute_diagnostics = input$compute_diag,
+        compute_parameters = input$compute_parameters,
+        compute_variance_partitioning = input$compute_vp,
+        compute_associations = input$compute_assoc,
+        make_predictions = input$make_predictions,
+        make_report = input$make_report,
+        support_level_beta = num_value(input, 'support_beta', 0.95),
+        support_level_gamma = num_value(input, 'support_gamma', 0.95),
+        support_level_omega = num_value(input, 'support_omega', 0.90)
+      )
+    )
+  })
+
+  do_check <- function() {
+    Y <- get_Y(); XData <- get_X(); TrData <- get_Tr()
+    msgs <- validate_hmsc_inputs(as.matrix(Y), XData, TrData)
+    rv_hmsc_fixed$check_result <- paste(msgs, collapse = "\n")
+    add_log(paste("✅", paste(msgs, collapse = " | ")))
+  }
+
+  observeEvent(input$check_data, {
+    tryCatch(do_check(), error = function(e) { rv_hmsc_fixed$check_result <- paste("Data check failed: ", e$message); add_log(paste("❌ Data check failed: ", e$message)) })
+  })
+  observeEvent(input$check_data2, {
+    tryCatch(do_check(), error = function(e) { rv_hmsc_fixed$check_result <- paste("Data check failed: ", e$message); add_log(paste("❌ Data check failed: ", e$message)) })
+  })
+
+  observeEvent(input$run_model, {
+    tryCatch({
+      req(input$Y_file, input$X_file)
+      add_log("📥 Start reading data...")
+      Y <- get_Y(); XData <- get_X(); TrData <- get_Tr()
+      studyDesign <- NULL; coordinates <- NULL; phyloTree <- NULL
+      if (!is.null(input$study_file)) studyDesign <- read_uploaded_csv(input$study_file, "studyDesign.csv")
+      if (!is.null(input$coord_file)) coordinates <- read_uploaded_csv(input$coord_file, "coordinates.csv")
+      if (!is.null(input$phylo_file)) phyloTree <- ape::read.tree(input$phylo_file$datapath)
+
+      outdir <- make_output_dir("hmsc")
+      rv_hmsc_fixed$outdir <- outdir
+      cfg <- make_cfg()
+      yaml::write_yaml(cfg, file.path(outdir, "used_config.yml"))
+
+      # copy uploaded raw files for reproducibility
+      try(file.copy(input$Y_file$datapath, file.path(outdir, "inputs", input$Y_file$name), overwrite = TRUE), silent = TRUE)
+      try(file.copy(input$X_file$datapath, file.path(outdir, "inputs", input$X_file$name), overwrite = TRUE), silent = TRUE)
+      if (!is.null(input$Tr_file)) try(file.copy(input$Tr_file$datapath, file.path(outdir, "inputs", input$Tr_file$name), overwrite = TRUE), silent = TRUE)
+      if (!is.null(input$study_file)) try(file.copy(input$study_file$datapath, file.path(outdir, "inputs", input$study_file$name), overwrite = TRUE), silent = TRUE)
+      if (!is.null(input$coord_file)) try(file.copy(input$coord_file$datapath, file.path(outdir, "inputs", input$coord_file$name), overwrite = TRUE), silent = TRUE)
+      if (!is.null(input$phylo_file)) try(file.copy(input$phylo_file$datapath, file.path(outdir, "inputs", input$phylo_file$name), overwrite = TRUE), silent = TRUE)
+
+      rv_hmsc_fixed$start_time <- Sys.time()
+      rv_hmsc_fixed$estimate_total_sec <- estimate_runtime_seconds(Y, XData, cfg)
+      update_progress(2, "Ready to run", 1, paste0("rough estimated total runtime: ", format_seconds_cn(rv_hmsc_fixed$estimate_total_sec)))
+      add_log(paste("📂 Output directory: ", outdir))
+      add_log(paste0("⏱️ rough estimated total runtime: ", format_seconds_cn(rv_hmsc_fixed$estimate_total_sec), ".This is an estimatevalue, actual time depends on the computerandmodelcomplexity."))
+      add_log("🚀 Start the Hmsc workflow.")
+
+      progress_fun <- function(percent, stage, step = NULL, detail = "") {
+        update_progress(percent, stage, step, detail)
+      }
+
+      fit_hmsc_workflow(Y, XData, TrData, phyloTree, studyDesign, coordinates, cfg, outdir,
+                        log_fun = function(txt) add_log(txt),
+                        progress_fun = progress_fun)
+      update_progress(100, "Completed", 9, "All outputs have been generated and can be downloaded ZIP.")
+      add_log("✅ The full workflow is completed. Please check the output filescolumnstable orDownload ZIP.")
+    }, error = function(e) {
+      update_progress(rv_hmsc_fixed$progress, "Run failed", rv_hmsc_fixed$step, paste("Error: ", e$message))
+      add_log(paste("❌ Run failed: ", e$message))
+    })
+  })
+
+  output$files <- renderText({
+    if (is.null(rv_hmsc_fixed$outdir) || !dir.exists(rv_hmsc_fixed$outdir)) return("No output files yet. They will appear here after running the model.")
+    paste(list.files(rv_hmsc_fixed$outdir, recursive = TRUE), collapse = "\n")
+  })
+
+  output$download_results <- downloadHandler(
+    filename = function() paste0("JSDM Studio_results_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".zip"),
+    content = function(file) {
+      if (is.null(rv_hmsc_fixed$outdir) || !dir.exists(rv_hmsc_fixed$outdir)) {
+        tmp <- tempfile(fileext = ".txt")
+        writeLines("No output results yet. Please run the model first.", tmp)
+        zip::zipr(file, files = tmp)
+      } else {
+        old <- getwd(); on.exit(setwd(old), add = TRUE)
+        setwd(dirname(rv_hmsc_fixed$outdir))
+        zip::zipr(file, files = basename(rv_hmsc_fixed$outdir))
+      }
+    }
+  )
+
+  # ---- Imported FULL_ENGLISH_FIXED Hmsc server logic END ----
