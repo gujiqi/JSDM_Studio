@@ -72,7 +72,7 @@ The GUI exports boral-specific output manifests. Production fitting should popul
 
 When an engine is not production-connected or a dependency is missing, the run must:
 
-- use `scaffold_only`, `check_failed` or `fit_failed`;
+- use `model_defined`, `check_failed` or `fit_failed`;
 - never report `Completed`;
 - write non-empty diagnostic files;
 - write engine-specific result manifests;

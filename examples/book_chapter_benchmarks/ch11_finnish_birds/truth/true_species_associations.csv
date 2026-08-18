@@ -1,0 +1,16 @@
+"species_i","species_j","true_association"
+"Phylloscopus_collybita","Tetrao_tetrix",0.216317947068187
+"Phylloscopus_collybita","Tringa_ochropus",0.442041022269773
+"Phylloscopus_collybita","Turdus_viscivorus",0.273719930986392
+"Phylloscopus_collybita","Sylvia_communis",0.38949041885226
+"Phylloscopus_collybita","Phylloscopus_sibilatrix",0.385696266389916
+"Tetrao_tetrix","Tringa_ochropus",0.0857142857142857
+"Tetrao_tetrix","Turdus_viscivorus",0.377964473009227
+"Tetrao_tetrix","Sylvia_communis",0.0563436169819011
+"Tetrao_tetrix","Phylloscopus_sibilatrix",0.264575131106459
+"Tringa_ochropus","Turdus_viscivorus",-0.0755928946018454
+"Tringa_ochropus","Sylvia_communis",0.169030850945703
+"Tringa_ochropus","Phylloscopus_sibilatrix",0.264575131106459
+"Turdus_viscivorus","Sylvia_communis",0.223606797749979
+"Turdus_viscivorus","Phylloscopus_sibilatrix",0.1
+"Sylvia_communis","Phylloscopus_sibilatrix",0.559016994374947

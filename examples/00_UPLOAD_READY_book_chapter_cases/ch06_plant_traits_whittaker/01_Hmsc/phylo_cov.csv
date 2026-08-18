@@ -1,0 +1,7 @@
+"","Berberis_nervosa","Polystichum_munitum","Chrysolepis_chrysophylla","Whipplea_modesta","Linnaea_borealis_var_longiflora","Gaultheria_shallon"
+"Berberis_nervosa",1,0.05,0.05,0.05,0.05,0.05
+"Polystichum_munitum",0.05,1,0.05,0.05,0.05,0.05
+"Chrysolepis_chrysophylla",0.05,0.05,1,0.05,0.05,0.05
+"Whipplea_modesta",0.05,0.05,0.05,1,0.05,0.05
+"Linnaea_borealis_var_longiflora",0.05,0.05,0.05,0.05,1,0.05
+"Gaultheria_shallon",0.05,0.05,0.05,0.05,0.05,1

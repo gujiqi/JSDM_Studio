@@ -1,0 +1,1 @@
+variable,definitionsite,study site ID (one study plot per site)species,name of speciestrait,functional trait: leaf tissue carbon to nitrogen ratioenv,environmental variable: site position on the topogrpahic moisture gradient (higher numbers are topographically drier sites) value,plant abundance (see methods for details)

@@ -53,6 +53,17 @@ __pycache__/
 *.tar.gz
 *.tgz
 
+# Local reference-paper/package archives are kept out of the public source repo.
+# Keep external_packages/hmsc-hpc-main because it is the lightweight CPU helper
+# source used by the Hmsc-HPC workflow.
+external_packages/HMSC/
+external_packages/boral/
+external_packages/gjam/
+external_packages/jSDM/
+external_packages/sjSDM/
+external_packages/spOccupancy/
+external_packages/hmsc-hpc-main/examples/big_spatial/
+
 # Historical local backups
 app_before*
 app_Hmsc_original_backup.R

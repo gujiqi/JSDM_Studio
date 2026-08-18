@@ -1,0 +1,16 @@
+"species_i","species_j","true_association"
+"Fomitopsis_pinicola","Capronia_kleinmondensis",0.151185789203691
+"Fomitopsis_pinicola","Phellopilus_nigrolimitatus",-0.250417091772061
+"Fomitopsis_pinicola","Antrodia_serialis",0.0488765325324301
+"Fomitopsis_pinicola","Heterobasidion_parviporum",0.122266665734192
+"Fomitopsis_pinicola","Heterobasidion_abietinum",0.00940512813339942
+"Capronia_kleinmondensis","Phellopilus_nigrolimitatus",0.0254823595718813
+"Capronia_kleinmondensis","Antrodia_serialis",-0.0258630300055936
+"Capronia_kleinmondensis","Heterobasidion_parviporum",-0.161743595582868
+"Capronia_kleinmondensis","Heterobasidion_abietinum",-0.161743595582868
+"Phellopilus_nigrolimitatus","Antrodia_serialis",0.349297046017072
+"Phellopilus_nigrolimitatus","Heterobasidion_parviporum",-0.526297695800926
+"Phellopilus_nigrolimitatus","Heterobasidion_abietinum",-0.526297695800926
+"Antrodia_serialis","Heterobasidion_parviporum",-0.363614830486362
+"Antrodia_serialis","Heterobasidion_abietinum",-0.247772937588052
+"Heterobasidion_parviporum","Heterobasidion_abietinum",0.888544891640867

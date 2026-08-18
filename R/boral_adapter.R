@@ -105,10 +105,14 @@ safe_csv <- function(path) {
   if (ncol(dat) > 1) {
     first <- dat[[1]]
     first_name <- names(dat)[1] %||% ""
-    looks_like_row_index <- !nzchar(first_name) || first_name %in% c("X", "...1")
-    if (!anyDuplicated(first) && (looks_like_row_index || !all(suppressWarnings(!is.na(as.numeric(first)))))) {
+    first_chr <- as.character(first)
+    first_num <- suppressWarnings(as.numeric(first_chr))
+    sequence_index <- all(!is.na(first_num)) && identical(as.integer(first_num), seq_len(length(first_num)))
+    row_id_name <- first_name %in% c("", "X", "X.1", "...1", "row.names", "rowname", "row_id", "id", "site_id", "sample_id")
+    row_id_text <- !all(!is.na(first_num))
+    if (!anyDuplicated(first_chr) && (row_id_name || sequence_index || row_id_text)) {
       dat <- dat[-1]
-      rownames(dat) <- first
+      rownames(dat) <- make.unique(first_chr)
     }
   }
   dat

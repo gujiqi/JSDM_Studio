@@ -1,0 +1,4 @@
+JSDMStudio_Setup.exe  0484823162080F554C38B10068038A9BF25DBE665950F4AAFDE9957A4BBBE16A
+JSDMStudio_universal_benchmark_ALL_MODELS.zip  b61d43fba42b78153fbbda2c41d076e0a597d3f025360e743bfffad83cc037f9
+
+Note: the final release ZIP SHA256 is calculated after packaging and is reported beside the ZIP as a sibling .sha256.txt file, because an archive cannot include its own final hash without changing that hash.

@@ -1,0 +1,6 @@
+case_id: ch06_plant_traits_whittaker
+title: Chapter 6 plant traits and topographic moisture gradient
+source_type: empirical_book_chapter_case
+truth_note: empirical observed occurrence is used as the reference probability for software benchmark comparison
+n_sites: 36
+n_species: 6

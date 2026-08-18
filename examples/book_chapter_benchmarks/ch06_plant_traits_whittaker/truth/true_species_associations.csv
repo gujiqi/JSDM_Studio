@@ -1,0 +1,16 @@
+"species_i","species_j","true_association"
+"Berberis_nervosa","Polystichum_munitum",0.38949041885226
+"Berberis_nervosa","Chrysolepis_chrysophylla",0.38949041885226
+"Berberis_nervosa","Whipplea_modesta",-0.0563436169819011
+"Berberis_nervosa","Linnaea_borealis_var_longiflora",0.335410196624968
+"Berberis_nervosa","Gaultheria_shallon",0.0556414884074657
+"Polystichum_munitum","Chrysolepis_chrysophylla",0.114551083591331
+"Polystichum_munitum","Whipplea_modesta",0.103456409467394
+"Polystichum_munitum","Linnaea_borealis_var_longiflora",0.385696266389916
+"Polystichum_munitum","Gaultheria_shallon",0.219814241486068
+"Chrysolepis_chrysophylla","Whipplea_modesta",-0.216317947068187
+"Chrysolepis_chrysophylla","Linnaea_borealis_var_longiflora",0.174185410627704
+"Chrysolepis_chrysophylla","Gaultheria_shallon",0.337461300309597
+"Whipplea_modesta","Linnaea_borealis_var_longiflora",0.0377964473009227
+"Whipplea_modesta","Gaultheria_shallon",-0.347989740935778
+"Linnaea_borealis_var_longiflora","Gaultheria_shallon",0.385696266389916

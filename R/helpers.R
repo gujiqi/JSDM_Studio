@@ -1,7 +1,6 @@
 # R/helpers.R
-# JSDM Studio rich-output helper functions
-# 
-# 
+# Shared helper functions for JSDM Studio output workflows.
+# These utilities are retained for backward compatibility with older Hmsc scripts.
 
 `%||%` <- function(a, b) {
   if (is.null(a) || length(a) == 0 || (length(a) == 1 && is.na(a))) b else a
@@ -10,21 +9,21 @@
 
 safe_read_csv <- function(path, label = "file") {
   if (is.null(path) || is.na(path) || path == "" || !file.exists(path)) {
-    stop(sprintf(" %s%s", label, path), call. = FALSE)
+    stop(sprintf("Required file not found for %s: %s", label, path), call. = FALSE)
   }
   read.csv(path, row.names = 1, check.names = FALSE, stringsAsFactors = TRUE)
 }
 
 
-safe_try <- function(expr, label = "", log_fun = function(x) message(x)) {
+safe_try <- function(expr, label = "step", log_fun = function(x) message(x)) {
   tryCatch(expr, error = function(e) {
-    log_fun(paste0(" ", label, "", e$message))
+    log_fun(paste0(label, " failed: ", e$message))
     NULL
   })
 }
 
 read_uploaded_csv <- function(file_input, label = "file") {
-  if (is.null(file_input)) stop(sprintf(" %s", label), call. = FALSE)
+  if (is.null(file_input)) stop(sprintf("Please upload %s before running this workflow.", label), call. = FALSE)
   read.csv(file_input$datapath, row.names = 1, check.names = FALSE, stringsAsFactors = TRUE)
 }
 
@@ -57,29 +56,29 @@ validate_hmsc_inputs <- function(Y, XData, TrData = NULL, studyDesign = NULL, co
   messages <- character()
   if (!is.matrix(Y)) Y <- as.matrix(Y)
   suppressWarnings(storage.mode(Y) <- "numeric")
-  if (!is.numeric(Y)) stop("Y / 0/1", call. = FALSE)
-  if (nrow(Y) != nrow(XData)) stop("Y  XData Y  XData ", call. = FALSE)
+  if (!is.numeric(Y)) stop("Y.csv must be a numeric response matrix. Use 0/1 for presence-absence, non-negative integers for counts, or numeric continuous values for normal-response workflows.", call. = FALSE)
+  if (nrow(Y) != nrow(XData)) stop("Y.csv and XData.csv must have the same number of rows; each row must represent the same sampling unit in the same order.", call. = FALSE)
   if (!is.null(rownames(Y)) && !is.null(rownames(XData)) && !all(rownames(Y) == rownames(XData))) {
-    stop("Y  XData ", call. = FALSE)
+    stop("Y.csv and XData.csv row names do not match. Align sampling-unit names or remove inconsistent row names before fitting.", call. = FALSE)
   }
-  if (anyNA(Y)) stop("Y  NA", call. = FALSE)
-  if (anyNA(XData)) messages <- c(messages, "XData  NAHmsc ")
+  if (anyNA(Y)) stop("Y.csv contains missing values (NA). Handle missing responses before fitting this Hmsc workflow.", call. = FALSE)
+  if (anyNA(XData)) messages <- c(messages, "XData.csv contains NA values. Hmsc fitting may fail unless missing predictors are removed or imputed.")
 
   if (!is.null(TrData)) {
     if (!all(colnames(Y) %in% rownames(TrData))) {
       missing_sp <- setdiff(colnames(Y), rownames(TrData))
-      stop(paste0("traits/TrData ", paste(missing_sp, collapse = ", ")), call. = FALSE)
+      stop(paste0("traits/TrData.csv is missing species: ", paste(missing_sp, collapse = ", ")), call. = FALSE)
     }
-    messages <- c(messages, sprintf("traits %s %s ", nrow(TrData), ncol(TrData)))
+    messages <- c(messages, sprintf("TrData check: %s species rows and %s trait columns.", nrow(TrData), ncol(TrData)))
   }
   if (!is.null(studyDesign)) {
-    if (nrow(studyDesign) != nrow(Y)) messages <- c(messages, "studyDesign  Y ")
+    if (nrow(studyDesign) != nrow(Y)) messages <- c(messages, "studyDesign.csv row count does not match Y.csv; random-effect design must align with sampling units.")
   }
   if (!is.null(coordinates)) {
-    if (nrow(coordinates) != nrow(Y)) messages <- c(messages, "coordinates  Y ")
+    if (nrow(coordinates) != nrow(Y)) messages <- c(messages, "coordinates.csv row count does not match Y.csv; spatial random effects require one coordinate row per sampling unit.")
   }
 
-  messages <- c(messages, sprintf("%s %s %s ", nrow(Y), ncol(Y), ncol(XData)))
+  messages <- c(messages, sprintf("Data check passed: %s sampling units, %s species/responses and %s environmental predictors.", nrow(Y), ncol(Y), ncol(XData)))
   return(messages)
 }
 

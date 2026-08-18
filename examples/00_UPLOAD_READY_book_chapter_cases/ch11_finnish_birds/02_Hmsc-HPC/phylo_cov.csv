@@ -1,0 +1,7 @@
+"","Phylloscopus_collybita","Tetrao_tetrix","Tringa_ochropus","Turdus_viscivorus","Sylvia_communis","Phylloscopus_sibilatrix"
+"Phylloscopus_collybita",1,0,0,0,0,0
+"Tetrao_tetrix",0,1,0,0,0,0
+"Tringa_ochropus",0,0,1,0,0,0
+"Turdus_viscivorus",0,0,0,1,0,0
+"Sylvia_communis",0,0,0,0,1,0
+"Phylloscopus_sibilatrix",0,0,0,0,0,1

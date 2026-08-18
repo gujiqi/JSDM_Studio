@@ -1102,11 +1102,49 @@ collect_master_results <- function(master_dir, engines, dat, statuses) {
   }
   truth_pred$error_to_truth <- suppressWarnings(as.numeric(truth_pred$predicted) - as.numeric(truth_pred$truth_probability))
   write.csv(truth_pred, file.path(out5, "truth_vs_predictions.csv"), row.names = FALSE)
-  pred_metrics <- data.frame(engine = engines, rmse_to_truth_probability = NA_real_,
-                             n_predictions = 0L, stringsAsFactors = FALSE)
+  pred_metrics <- data.frame(engine = engines,
+                             rmse_to_truth_probability = NA_real_,
+                             calibration_intercept = NA_real_,
+                             calibration_slope = NA_real_,
+                             pearson_correlation = NA_real_,
+                             spearman_rank_correlation = NA_real_,
+                             n_predictions = 0L,
+                             stringsAsFactors = FALSE)
   if (nrow(truth_pred)) {
     pred_metrics$rmse_to_truth_probability <- vapply(pred_metrics$engine, function(e) {
       numeric_rmse(truth_pred$error_to_truth[truth_pred$engine == e])
+    }, numeric(1))
+    pred_metrics$calibration_intercept <- vapply(pred_metrics$engine, function(e) {
+      idx <- truth_pred$engine == e
+      pred <- suppressWarnings(as.numeric(truth_pred$predicted[idx]))
+      truth <- suppressWarnings(as.numeric(truth_pred$truth_probability[idx]))
+      ok <- is.finite(pred) & is.finite(truth)
+      if (sum(ok) < 3L || length(unique(pred[ok])) < 2L) return(NA_real_)
+      unname(coef(lm(truth[ok] ~ pred[ok]))[1])
+    }, numeric(1))
+    pred_metrics$calibration_slope <- vapply(pred_metrics$engine, function(e) {
+      idx <- truth_pred$engine == e
+      pred <- suppressWarnings(as.numeric(truth_pred$predicted[idx]))
+      truth <- suppressWarnings(as.numeric(truth_pred$truth_probability[idx]))
+      ok <- is.finite(pred) & is.finite(truth)
+      if (sum(ok) < 3L || length(unique(pred[ok])) < 2L) return(NA_real_)
+      unname(coef(lm(truth[ok] ~ pred[ok]))[2])
+    }, numeric(1))
+    pred_metrics$pearson_correlation <- vapply(pred_metrics$engine, function(e) {
+      idx <- truth_pred$engine == e
+      pred <- suppressWarnings(as.numeric(truth_pred$predicted[idx]))
+      truth <- suppressWarnings(as.numeric(truth_pred$truth_probability[idx]))
+      ok <- is.finite(pred) & is.finite(truth)
+      if (sum(ok) < 3L || length(unique(pred[ok])) < 2L || length(unique(truth[ok])) < 2L) return(NA_real_)
+      suppressWarnings(cor(pred[ok], truth[ok], method = "pearson"))
+    }, numeric(1))
+    pred_metrics$spearman_rank_correlation <- vapply(pred_metrics$engine, function(e) {
+      idx <- truth_pred$engine == e
+      pred <- suppressWarnings(as.numeric(truth_pred$predicted[idx]))
+      truth <- suppressWarnings(as.numeric(truth_pred$truth_probability[idx]))
+      ok <- is.finite(pred) & is.finite(truth)
+      if (sum(ok) < 3L || length(unique(pred[ok])) < 2L || length(unique(truth[ok])) < 2L) return(NA_real_)
+      suppressWarnings(cor(pred[ok], truth[ok], method = "spearman"))
     }, numeric(1))
     pred_metrics$n_predictions <- vapply(pred_metrics$engine, function(e) {
       sum(is.finite(truth_pred$error_to_truth[truth_pred$engine == e]))

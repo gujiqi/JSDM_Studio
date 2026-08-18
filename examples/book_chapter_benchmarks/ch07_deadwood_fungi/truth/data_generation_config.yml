@@ -1,0 +1,6 @@
+case_id: ch07_deadwood_fungi
+title: Chapter 7 dead wood-inhabiting fungi sequencing data
+source_type: empirical_book_chapter_case
+truth_note: empirical observed occurrence is used as the reference probability for software benchmark comparison
+n_sites: 36
+n_species: 6

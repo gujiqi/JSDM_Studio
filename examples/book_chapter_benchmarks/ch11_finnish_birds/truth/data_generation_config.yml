@@ -1,0 +1,6 @@
+case_id: ch11_finnish_birds
+title: Chapter 11 Finnish birds community data
+source_type: empirical_book_chapter_case
+truth_note: empirical observed occurrence is used as the reference probability for software benchmark comparison
+n_sites: 36
+n_species: 6

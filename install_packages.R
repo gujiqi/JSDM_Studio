@@ -48,7 +48,7 @@ optional_failed <- install_if_missing(optional_engine_packages, required = FALSE
 
 if (length(optional_failed) > 0) {
   message("Optional packages not installed: ", paste(optional_failed, collapse = ", "))
-  message("The app can still start. Workflows that need those packages will report scaffold_only or fit_failed diagnostics.")
+  message("The app can still start. Workflows that need those packages will report check_failed, model_defined or fit_failed diagnostics.")
 }
 
 message("External software notes:")

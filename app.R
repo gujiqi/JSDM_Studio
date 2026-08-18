@@ -40,10 +40,14 @@ read_csv_safe <- function(path) {
     if (ncol(dat) > 1) {
       first <- dat[[1]]
       first_name <- names(dat)[1] %||% ""
-      looks_like_row_index <- !nzchar(first_name) || first_name %in% c("X", "...1")
-      if (!anyDuplicated(first) && (looks_like_row_index || !all(suppressWarnings(!is.na(as.numeric(first)))))) {
+      first_chr <- as.character(first)
+      first_num <- suppressWarnings(as.numeric(first_chr))
+      sequence_index <- all(!is.na(first_num)) && identical(as.integer(first_num), seq_len(length(first_num)))
+      row_id_name <- first_name %in% c("", "X", "X.1", "...1", "row.names", "rowname", "row_id", "id", "site_id", "sample_id")
+      row_id_text <- !all(!is.na(first_num))
+      if (!anyDuplicated(first_chr) && (row_id_name || sequence_index || row_id_text)) {
         dat <- dat[-1]
-        rownames(dat) <- first
+        rownames(dat) <- make.unique(first_chr)
       }
     }
     dat
@@ -103,6 +107,9 @@ copy_upload <- function(fileinfo, outdir, target_name) {
 
 make_zip <- function(outdir) {
   if (is.null(outdir) || !dir.exists(outdir)) stop("Cannot create ZIP because output folder does not exist.", call. = FALSE)
+  if (exists("ensure_output_contract", mode = "function")) {
+    ensure_output_contract(outdir)
+  }
   zipfile <- paste0(outdir, ".zip")
   if (file.exists(zipfile)) unlink(zipfile)
   manifest <- file.path(outdir, "standard", "output_manifest.csv")
@@ -148,7 +155,53 @@ write_data_check_messages <- function(outdir, messages = character()) {
             file.path(outdir, "diagnostics", "data_check_messages.csv"), row.names = FALSE)
 }
 
+contract_status_values <- function() c("fitted", "model_defined", "check_failed", "fit_failed")
+
+normalize_engine_status <- function(status) {
+  if (is.null(status)) status <- list(status = "fit_failed")
+  is_list <- is.list(status)
+  raw <- if (is_list) status$status else status
+  raw <- as.character(raw %||% "fit_failed")[1]
+  if (!nzchar(raw) || is.na(raw)) raw <- "fit_failed"
+  key <- tolower(trimws(raw))
+  msg <- if (is_list) paste(c(status$warnings %||% character(), status$errors %||% character()), collapse = "; ") else ""
+  dependency_problem <- grepl("not available|not installed|missing|required package|dependency|could not be loaded", msg, ignore.case = TRUE)
+  mapped <- if (key %in% contract_status_values()) {
+    key
+  } else if (key %in% c("not_run", "waiting", "not_started", "missing", "missing_status", "not_ready_or_unknown", "not_ready", "stopped")) {
+    "check_failed"
+  } else if (key %in% c("scaffold_only", "ready")) {
+    if (dependency_problem) "check_failed" else "model_defined"
+  } else if (key %in% c("ready_for_real_fit", "model_ready", "compiled", "compile_only")) {
+    "model_defined"
+  } else if (grepl("scaffold|defined|compile|ready", key)) {
+    if (dependency_problem) "check_failed" else "model_defined"
+  } else if (grepl("fail|error|unknown", key)) {
+    "fit_failed"
+  } else if (grepl("complete|success|done", key)) {
+    "model_defined"
+  } else {
+    "fit_failed"
+  }
+  if (!is_list) return(mapped)
+  if (!identical(mapped, raw) && is.null(status$raw_status)) status$raw_status <- raw
+  status$status <- mapped
+  if (is.null(status$warnings) || length(status$warnings) == 0) status$warnings <- character()
+  if (is.null(status$errors) || length(status$errors) == 0) status$errors <- character()
+  if (identical(mapped, "model_defined") && length(status$warnings) == 0) {
+    status$warnings <- "Model boundary, scaffold or executable script was defined; no fitted posterior or performance evidence is claimed."
+  }
+  if (identical(mapped, "check_failed") && length(status$errors) == 0) {
+    status$errors <- "Workflow did not reach fitting. Inspect diagnostics/data_check_messages.csv and used_config.yml."
+  }
+  if (identical(mapped, "fit_failed") && length(status$errors) == 0) {
+    status$errors <- "Fitting or post-processing failed, or the workflow ended without a recognized success status."
+  }
+  status
+}
+
 write_engine_status <- function(outdir, status) {
+  status <- normalize_engine_status(status)
   dir.create(file.path(outdir, "diagnostics"), recursive = TRUE, showWarnings = FALSE)
   dir.create(file.path(outdir, "tables"), recursive = TRUE, showWarnings = FALSE)
   if (is.null(status$warnings) || length(status$warnings) == 0) status$warnings <- character()
@@ -166,24 +219,34 @@ write_engine_status <- function(outdir, status) {
     writeLines(as.character(status$errors), file.path(outdir, "diagnostics", err_name))
   }
   write_session_info(outdir)
+  invisible(status)
 }
 
 write_standard_outputs <- function(outdir, engine, status, Y = NULL, X = NULL) {
+  status <- normalize_engine_status(status)
+  status_value <- status$status %||% "fit_failed"
   dir.create(file.path(outdir, "standard"), recursive = TRUE, showWarnings = FALSE)
+  species_names <- if (!is.null(Y) && !is.null(colnames(Y))) colnames(Y) else NA_character_
+  site_names <- if (!is.null(Y) && !is.null(rownames(Y))) rownames(Y) else NA_character_
+  predictor_names <- if (!is.null(X) && !is.null(colnames(X))) colnames(X) else NA_character_
   write.csv(data.frame(
     run_id = basename(outdir),
     engine = engine,
-    status = status$status %||% "unknown",
+    status = status_value,
     n_sites = if (is.null(Y)) NA_integer_ else nrow(Y),
     n_responses = if (is.null(Y)) NA_integer_ else ncol(Y),
     n_predictors = if (is.null(X)) NA_integer_ else ncol(X),
     stringsAsFactors = FALSE
   ), file.path(outdir, "standard", "run_summary.csv"), row.names = FALSE)
   standard_tables <- list(
-    effects_long = data.frame(engine=engine, response_id=NA_character_, predictor=NA_character_, direction=NA_character_, estimate=NA_real_, lower=NA_real_, upper=NA_real_, notes=status$status %||% "not_fitted", stringsAsFactors=FALSE),
+    effects_long = data.frame(engine=engine, response_id=species_names[1], predictor=predictor_names[1], direction=NA_character_, estimate=NA_real_, lower=NA_real_, upper=NA_real_, notes=status_value, stringsAsFactors=FALSE),
     predictions_long = data.frame(engine=engine, site_id=NA_character_, response_id=NA_character_, observed=NA_real_, predicted_mean=NA_real_, predicted_lower=NA_real_, predicted_upper=NA_real_, stringsAsFactors=FALSE),
-    associations_long = data.frame(engine=engine, response_1=NA_character_, response_2=NA_character_, association_type=NA_character_, estimate=NA_real_, comparable_level=status$status %||% "not_fitted", stringsAsFactors=FALSE),
-    fit_metrics = data.frame(engine=engine, metric=NA_character_, response_id=NA_character_, value=NA_real_, notes=status$status %||% "not_fitted", stringsAsFactors=FALSE)
+    associations_long = data.frame(engine=engine, response_1=NA_character_, response_2=NA_character_, association_type=NA_character_, estimate=NA_real_, comparable_level=status_value, stringsAsFactors=FALSE),
+    fit_metrics = data.frame(engine=engine, metric=NA_character_, response_id=NA_character_, value=NA_real_, notes=status_value, stringsAsFactors=FALSE),
+    diagnostics_long = data.frame(engine=engine, diagnostic="engine_status", status=status_value, value=NA_real_, note=paste(c(status$warnings, status$errors), collapse="; "), stringsAsFactors=FALSE),
+    effects_species_environment = data.frame(engine=engine, species=species_names[1], predictor=predictor_names[1], estimate=NA_real_, lower=NA_real_, upper=NA_real_, statistic=NA_real_, p_or_support=NA_real_, effect_type="environment", scale="engine_specific", comparable=FALSE, note=status_value, stringsAsFactors=FALSE),
+    predictions_site_species = data.frame(engine=engine, site_id=site_names[1], species=species_names[1], observed=NA_real_, predicted=NA_real_, truth_probability=NA_real_, residual=NA_real_, prediction_scale="engine_specific", stringsAsFactors=FALSE),
+    associations_species_species = data.frame(engine=engine, species_i=NA_character_, species_j=NA_character_, estimate=NA_real_, lower=NA_real_, upper=NA_real_, association_type="engine_specific", scale="engine_specific", comparable=FALSE, note=status_value, stringsAsFactors=FALSE)
   )
   for (nm in names(standard_tables)) {
     write.csv(standard_tables[[nm]], file.path(outdir, "standard", paste0(nm, ".csv")), row.names = FALSE)
@@ -192,12 +255,133 @@ write_standard_outputs <- function(outdir, engine, status, Y = NULL, X = NULL) {
     file.path(outdir, "standard", "output_manifest.csv"), row.names = FALSE)
 }
 
+read_engine_status_safe <- function(outdir, engine = NULL) {
+  status_file <- file.path(outdir, "diagnostics", "engine_status.json")
+  if (file.exists(status_file) && requireNamespace("jsonlite", quietly = TRUE)) {
+    st <- tryCatch(jsonlite::fromJSON(status_file, simplifyVector = FALSE), error = function(e) NULL)
+    if (!is.null(st)) return(normalize_engine_status(st))
+  }
+  run_file <- file.path(outdir, "standard", "run_summary.csv")
+  if (file.exists(run_file)) {
+    run <- tryCatch(read.csv(run_file, check.names = FALSE), error = function(e) NULL)
+    if (!is.null(run) && nrow(run) > 0) {
+      return(normalize_engine_status(list(
+        engine = engine %||% run$engine[1] %||% "unknown",
+        status = run$status[1] %||% "fit_failed",
+        warnings = character(),
+        errors = character()
+      )))
+    }
+  }
+  normalize_engine_status(list(engine = engine %||% basename(outdir), status = "check_failed",
+                               errors = "No engine_status.json or standard/run_summary.csv was available."))
+}
+
+standard_read_csv <- function(path) {
+  if (!file.exists(path)) return(NULL)
+  tryCatch(read.csv(path, check.names = FALSE, stringsAsFactors = FALSE), error = function(e) NULL)
+}
+
+ensure_output_contract <- function(outdir, engine = NULL, status = NULL, Y = NULL, X = NULL) {
+  if (is.null(outdir) || !dir.exists(outdir)) return(invisible(FALSE))
+  status <- normalize_engine_status(status %||% read_engine_status_safe(outdir, engine))
+  engine <- engine %||% status$engine %||% basename(outdir)
+  status$engine <- engine
+  for (d in engine_output_dirs(engine)) dir.create(file.path(outdir, d), recursive = TRUE, showWarnings = FALSE)
+  if (!file.exists(file.path(outdir, "used_config.yml"))) {
+    if (requireNamespace("yaml", quietly = TRUE)) {
+      try(yaml::write_yaml(list(engine = engine, status = status$status, note = "Minimal config written by output-contract repair."), file.path(outdir, "used_config.yml")), silent = TRUE)
+    } else {
+      writeLines(c(paste0("engine: ", engine), paste0("status: ", status$status)), file.path(outdir, "used_config.yml"))
+    }
+  }
+  if (!file.exists(file.path(outdir, "diagnostics", "data_check_messages.csv"))) {
+    write_data_check_messages(outdir, "No data-check messages were recorded before output-contract repair.")
+  }
+  status <- write_engine_status(outdir, status)
+  std <- file.path(outdir, "standard")
+  dir.create(std, recursive = TRUE, showWarnings = FALSE)
+  placeholder <- function(nm, dat) {
+    p <- file.path(std, paste0(nm, ".csv"))
+    if (!file.exists(p)) write.csv(dat, p, row.names = FALSE)
+  }
+  placeholder("run_summary", data.frame(run_id = basename(outdir), engine = engine, status = status$status,
+                                        n_sites = if (is.null(Y)) NA_integer_ else nrow(Y),
+                                        n_responses = if (is.null(Y)) NA_integer_ else ncol(Y),
+                                        n_predictors = if (is.null(X)) NA_integer_ else ncol(X),
+                                        stringsAsFactors = FALSE))
+  run_summary <- standard_read_csv(file.path(std, "run_summary.csv"))
+  if (!is.null(run_summary) && nrow(run_summary) > 0) {
+    if (!"engine" %in% names(run_summary)) run_summary$engine <- engine
+    if (!"status" %in% names(run_summary)) run_summary$status <- status$status
+    run_summary$engine[1] <- engine
+    run_summary$status[1] <- status$status
+    write.csv(run_summary, file.path(std, "run_summary.csv"), row.names = FALSE)
+  }
+  placeholder("effects_long", data.frame(engine=engine, response_id=NA_character_, predictor=NA_character_, direction=NA_character_, estimate=NA_real_, lower=NA_real_, upper=NA_real_, notes=status$status, stringsAsFactors=FALSE))
+  placeholder("predictions_long", data.frame(engine=engine, site_id=NA_character_, response_id=NA_character_, observed=NA_real_, predicted_mean=NA_real_, predicted_lower=NA_real_, predicted_upper=NA_real_, stringsAsFactors=FALSE))
+  placeholder("associations_long", data.frame(engine=engine, response_1=NA_character_, response_2=NA_character_, association_type=NA_character_, estimate=NA_real_, comparable_level=status$status, stringsAsFactors=FALSE))
+  placeholder("fit_metrics", data.frame(engine=engine, metric=NA_character_, response_id=NA_character_, value=NA_real_, notes=status$status, stringsAsFactors=FALSE))
+  diag_note <- paste(c(status$warnings %||% character(), status$errors %||% character()), collapse = "; ")
+  write.csv(data.frame(engine=engine, diagnostic="engine_status", status=status$status,
+                       value=NA_real_, note=diag_note, stringsAsFactors=FALSE),
+            file.path(std, "diagnostics_long.csv"), row.names = FALSE)
+  eff <- standard_read_csv(file.path(std, "effects_long.csv"))
+  if (!is.null(eff) && nrow(eff) > 0) {
+    species <- eff$response_id %||% eff$species %||% NA_character_
+    pred <- eff$predictor %||% NA_character_
+    write.csv(data.frame(engine=engine, species=species, predictor=pred,
+                         estimate=suppressWarnings(as.numeric(eff$estimate %||% NA_real_)),
+                         lower=suppressWarnings(as.numeric(eff$lower %||% NA_real_)),
+                         upper=suppressWarnings(as.numeric(eff$upper %||% NA_real_)),
+                         statistic=NA_real_, p_or_support=NA_real_,
+                         effect_type=if (identical(engine, "spOccupancy")) "occurrence_or_detection_check_effect_type" else "environment",
+                         scale="engine_specific",
+                         comparable=identical(status$status, "fitted"),
+                         note=eff$notes %||% status$status,
+                         stringsAsFactors=FALSE),
+              file.path(std, "effects_species_environment.csv"), row.names = FALSE)
+  }
+  pred <- standard_read_csv(file.path(std, "predictions_long.csv"))
+  if (!is.null(pred) && nrow(pred) > 0) {
+    predicted <- pred$predicted_mean %||% pred$predicted %||% NA_real_
+    observed <- pred$observed %||% NA_real_
+    write.csv(data.frame(engine=engine, site_id=pred$site_id %||% NA_character_,
+                         species=pred$response_id %||% pred$species %||% NA_character_,
+                         observed=suppressWarnings(as.numeric(observed)),
+                         predicted=suppressWarnings(as.numeric(predicted)),
+                         truth_probability=NA_real_,
+                         residual=suppressWarnings(as.numeric(observed)) - suppressWarnings(as.numeric(predicted)),
+                         prediction_scale="engine_specific",
+                         stringsAsFactors=FALSE),
+              file.path(std, "predictions_site_species.csv"), row.names = FALSE)
+  }
+  assoc <- standard_read_csv(file.path(std, "associations_long.csv"))
+  if (!is.null(assoc) && nrow(assoc) > 0) {
+    write.csv(data.frame(engine=engine,
+                         species_i=assoc$response_1 %||% assoc$species_i %||% NA_character_,
+                         species_j=assoc$response_2 %||% assoc$species_j %||% NA_character_,
+                         estimate=suppressWarnings(as.numeric(assoc$estimate %||% NA_real_)),
+                         lower=NA_real_, upper=NA_real_,
+                         association_type=assoc$association_type %||% "engine_specific",
+                         scale="engine_specific",
+                         comparable=FALSE,
+                         note=paste("Associations are engine-specific; raw numeric values are not interchangeable across engines. Status:", status$status),
+                         stringsAsFactors=FALSE),
+              file.path(std, "associations_species_species.csv"), row.names = FALSE)
+  }
+  write.csv(data.frame(file = list.files(outdir, recursive = TRUE), stringsAsFactors = FALSE),
+            file.path(std, "output_manifest.csv"), row.names = FALSE)
+  write_folder_readmes(outdir, engine)
+  invisible(TRUE)
+}
+
 write_reproducible_stub <- function(outdir, engine) {
   dir.create(file.path(outdir, "reproducible_script"), recursive = TRUE, showWarnings = FALSE)
   engine_id <- gsub("[^A-Za-z0-9_]+", "_", engine)
   writeLines(c(
     paste0("# Reproducible ", engine, " analysis/scaffold script generated by JSDMWorkbench"),
-    "# This script is executable. In scaffold-only mode it rebuilds the exported manifest tables,",
+    "# This script is executable. In model_defined or check_failed states it rebuilds exported manifest tables,",
     "# diagnostics and reproducibility index from used_config.yml and data/.",
     "args <- commandArgs(trailingOnly = FALSE)",
     "file_arg <- '--file='",
@@ -260,7 +444,13 @@ write_sjsdm_reproducible_script <- function(outdir) {
     "  dat <- read.csv(path, check.names = FALSE, stringsAsFactors = FALSE)",
     "  if (ncol(dat) > 1) {",
     "    first <- dat[[1]]",
-    "    if (!anyDuplicated(first) && !all(suppressWarnings(!is.na(as.numeric(first))))) { dat <- dat[-1]; rownames(dat) <- first }",
+    "    first_name <- names(dat)[1] %||% ''",
+    "    first_chr <- as.character(first)",
+    "    first_num <- suppressWarnings(as.numeric(first_chr))",
+    "    sequence_index <- all(!is.na(first_num)) && identical(as.integer(first_num), seq_len(length(first_num)))",
+    "    row_id_name <- first_name %in% c('', 'X', 'X.1', '...1', 'row.names', 'rowname', 'row_id', 'id', 'site_id', 'sample_id')",
+    "    row_id_text <- !all(!is.na(first_num))",
+    "    if (!anyDuplicated(first_chr) && (row_id_name || sequence_index || row_id_text)) { dat <- dat[-1]; rownames(dat) <- make.unique(first_chr) }",
     "  }",
     "  dat",
     "}",
@@ -350,6 +540,17 @@ write_sjsdm_reproducible_script <- function(outdir) {
     "  names(tab) <- c('response_id','predictor','estimate')",
     "  tab$engine <- 'sjSDM'; tab$direction <- ifelse(tab$estimate > 0, 'positive', ifelse(tab$estimate < 0, 'negative', 'zero')); tab$lower <- NA_real_; tab$upper <- NA_real_; tab$notes <- 'coef.sjSDM environmental/spatial coefficient'",
     "  write.csv(tab[, c('engine','response_id','predictor','direction','estimate','lower','upper','notes')], file.path('standard','effects_long.csv'), row.names = FALSE)",
+    "}",
+    "write_dnn_coef_artifacts <- function(obj, component) {",
+    "  dir.create('weights', showWarnings = FALSE, recursive = TRUE)",
+    "  pieces <- if (is.list(obj)) obj else list(weights = obj)",
+    "  piece_names <- names(pieces); if (is.null(piece_names) || length(piece_names) != length(pieces) || any(!nzchar(piece_names))) piece_names <- paste0('part_', seq_along(pieces))",
+    "  count_values <- function(z) { vals <- tryCatch(unlist(z, recursive = TRUE, use.names = FALSE), error = function(e) NULL); if (is.null(vals)) NA_integer_ else length(vals) }",
+    "  saveRDS(obj, file.path('weights', paste0(component, '_dnn_coef_weights.rds')))",
+    "  manifest <- data.frame(component = component, part = piece_names, class = vapply(pieces, function(z) paste(class(z), collapse='|'), character(1)), length = vapply(pieces, count_values, integer(1)), stringsAsFactors = FALSE)",
+    "  write.csv(manifest, file.path('weights', paste0(component, '_dnn_coef_weights_manifest.csv')), row.names = FALSE)",
+    "  write.csv(data.frame(component = component, coefficient_type = 'DNN_weight_object', status = 'saved_as_rds', note = 'DNN weights are not a species-by-predictor coefficient matrix; use weights/*_dnn_coef_weights.rds for reproducibility.', stringsAsFactors = FALSE), file.path('tables', paste0('coef_', component, '.csv')), row.names = FALSE)",
+    "  invisible(NULL)",
     "}",
     "write_predictions_long <- function(pred, Yobs = NULL) {",
     "  if (is.null(rownames(pred))) rownames(pred) <- paste0('site_', seq_len(nrow(pred)))",
@@ -489,10 +690,17 @@ write_sjsdm_reproducible_script <- function(outdir) {
     "  if (file.exists(file.path('data','pretrained_weights.rds'))) safe_step('setWeights', { pretrained <- readRDS(file.path('data','pretrained_weights.rds')); model <<- sjSDM::setWeights(model, pretrained); saveRDS(model, file.path('models','sjSDM_model_after_setWeights.rds')); write.csv(data.frame(status='applied', source='data/pretrained_weights.rds'), file.path('weights','pretrained_weights_status.csv'), row.names = FALSE) })",
     "  if (as_bool(cfg$regularization_biotic$tune_regularization, FALSE) && as_int(cfg$regularization_biotic$cv_k, 0) >= 2 && as_int(cfg$regularization_biotic$tune_steps, 0) > 0) safe_step('sjSDM_cv', { cv_res <- tryCatch(sjSDM::sjSDM_cv(Y = Y, env = env_obj, biotic = biotic_obj, spatial = spatial_obj, tune = 'random', CV = as_int(cfg$regularization_biotic$cv_k, 2), tune_steps = as_int(cfg$regularization_biotic$tune_steps, 1), device = as.character(cfg$dnn_optimizer$device %||% 'cpu'), sampling = max(100L, min(as_int(cfg$model$sampling, 5000), 1000L)), family = family_from_cfg(cfg$model$family), iter = as_int(cfg$model$iter, 100), step_size = min(as_int(cfg$model$step_size, 50), nrow(Y)), learning_rate = as_num(cfg$dnn_optimizer$learning_rate, 0.003), parallel = as_int(cfg$model$parallel, 0), control = control, dtype = as.character(cfg$model$dtype %||% 'float32'), seed = as_int(cfg$model$seed, 1234)), error = function(e) e); if (inherits(cv_res, 'error')) { msg <- conditionMessage(cv_res); step_warnings <<- c(step_warnings, paste('sjSDM_cv optional tuning failed; main fit still completed:', msg)); writeLines(msg, file.path('diagnostics','sjSDM_cv_error.txt')); write.csv(data.frame(status='sjSDM_cv_failed_main_fit_completed', error=msg, CV=as_int(cfg$regularization_biotic$cv_k, 2), tune_steps=as_int(cfg$regularization_biotic$tune_steps, 1), stringsAsFactors = FALSE), file.path('tables','sjSDM_cv_result_long.csv'), row.names = FALSE) } else { saveRDS(cv_res, file.path('tables','sjSDM_cv_result.rds')); write.csv(nested_to_long(cv_res), file.path('tables','sjSDM_cv_result_long.csv'), row.names = FALSE) } })",
     "  cf <- safe_step('coef', coef(model))",
-    "  env_coef <- if (!is.null(cf)) safe_step('coef_environment', coef_block(cf, model, 1)) else NULL",
+    "  env_coef <- NULL",
+    "  if (!is.null(cf) && identical(env_kind, 'dnn') && as_bool(cfg$outputs$coef, TRUE)) {",
+    "    dnn_obj <- if (is.list(cf) && !is.null(names(cf)) && 'env' %in% names(cf)) cf$env else if (is.list(cf)) cf[[1]] else cf",
+    "    safe_step('coef_environment_dnn_weights', write_dnn_coef_artifacts(dnn_obj, 'environment'))",
+    "    write.csv(data.frame(engine='sjSDM', response_id=NA_character_, predictor=NA_character_, direction=NA_character_, estimate=NA_real_, lower=NA_real_, upper=NA_real_, notes='environment DNN weights saved in weights/environment_dnn_coef_weights.rds; no direct species-by-predictor coefficient matrix is available', stringsAsFactors = FALSE), file.path('standard','effects_long.csv'), row.names = FALSE)",
+    "  } else if (!is.null(cf)) {",
+    "    env_coef <- safe_step('coef_environment', coef_block(cf, model, 1))",
+    "  }",
     "  if (!is.null(env_coef) && as_bool(cfg$outputs$coef, TRUE)) { write.csv(env_coef, file.path('tables','coef_environment.csv')); write_effects_long(env_coef) }",
     "  if (!is.null(spatial_obj) && !identical(spatial_kind, 'dnn') && !is.null(cf) && is.list(cf) && length(cf) > 1 && as_bool(cfg$outputs$coef, TRUE)) safe_step('coef_spatial', write.csv(coef_block(cf, model, 2, col_names = names(spatial_dat)), file.path('tables','coef_spatial.csv')))",
-    "  if (!is.null(spatial_obj) && identical(spatial_kind, 'dnn') && !is.null(cf) && is.list(cf) && 'spatial' %in% names(cf)) safe_step('spatial_dnn_coef_weights', saveRDS(cf$spatial, file.path('weights','spatial_dnn_coef_weights.rds')))",
+    "  if (!is.null(spatial_obj) && identical(spatial_kind, 'dnn') && !is.null(cf) && is.list(cf)) { spatial_dnn_obj <- if (!is.null(names(cf)) && 'spatial' %in% names(cf)) cf$spatial else if (length(cf) > 1) cf[[2]] else NULL; if (!is.null(spatial_dnn_obj)) safe_step('coef_spatial_dnn_weights', write_dnn_coef_artifacts(spatial_dnn_obj, 'spatial')) }",
     "  cov_mat <- safe_step('covariance', name_species_matrix(sjSDM::getCov(model), model)); if (!is.null(cov_mat) && as_bool(cfg$outputs$covariance_correlation, TRUE)) { write.csv(cov_mat, file.path('tables','covariance_matrix.csv')); write_associations_long(cov_mat, 'covariance') }",
     "  cor_mat <- safe_step('correlation', name_species_matrix(sjSDM::getCor(model), model)); if (!is.null(cor_mat) && as_bool(cfg$outputs$covariance_correlation, TRUE)) write.csv(cor_mat, file.path('tables','correlation_matrix.csv'))",
     "  if (as_bool(cfg$outputs$weights, TRUE)) safe_step('weights', saveRDS(sjSDM::getWeights(model), file.path('weights','model_weights.rds')))",
@@ -565,6 +773,7 @@ write_folder_readmes <- function(outdir, engine) {
 }
 
 write_engine_scaffold_outputs <- function(outdir, engine, cfg, status, Y = NULL, X = NULL) {
+  status <- normalize_engine_status(status)
   dir.create(file.path(outdir, "tables"), recursive = TRUE, showWarnings = FALSE)
   dir.create(file.path(outdir, "models"), recursive = TRUE, showWarnings = FALSE)
   dir.create(file.path(outdir, "results"), recursive = TRUE, showWarnings = FALSE)
@@ -584,7 +793,7 @@ write_engine_scaffold_outputs <- function(outdir, engine, cfg, status, Y = NULL,
   write.csv(data.frame(
     object = paste0(engine, " fitted model"),
     expected_path = file.path("models", paste0(engine_clean, "_model.rds")),
-    status = if (identical(status_value, "fitted")) "available_when_written_by_adapter" else "not_fitted_scaffold_only",
+    status = if (identical(status_value, "fitted")) "available_when_written_by_adapter" else "not_fitted_model_defined_or_failed",
     note = "The GUI exported settings, diagnostics and executable scripts. Statistical model objects require the production engine adapter.",
     stringsAsFactors = FALSE
   ), file.path(outdir, "models", "model_object_manifest.csv"), row.names = FALSE)
@@ -683,7 +892,7 @@ create_not_run_zip <- function(engine, project_name = "JSDMWorkbench") {
   outdir <- make_engine_run_dir(paste0(engine, "_not_run"), project_name)
   status <- list(
     engine = engine,
-    status = "not_run",
+    status = "check_failed",
     runtime_seconds = 0,
     warnings = character(),
     errors = paste0(engine, " has not been run in this session. This diagnostic ZIP was created instead of returning a fake ZIP.")
@@ -743,7 +952,11 @@ copy_zip_to_download <- function(zip_path, outdir, engine, file, project_name = 
   if (is.null(zip_path) || !file.exists(zip_path)) {
     zip_path <- create_not_run_zip(engine, project_name)
   }
-  file.copy(zip_path, file, overwrite = TRUE)
+  ok <- file.copy(zip_path, file, overwrite = TRUE)
+  if (!isTRUE(ok) || !file.exists(file) || file.info(file)$size <= 0) {
+    stop(paste0("Download ZIP copy failed for ", engine, "."), call. = FALSE)
+  }
+  invisible(file)
 }
 
 data_summary <- function(Y, X, Tr = NULL, study = NULL, coord = NULL, extra = NULL) {
@@ -1035,10 +1248,11 @@ hmsc_quiet_optional <- function(expr, fallback = NULL) {
 
 hmsc_build_mcmc_updater <- function(cfg) {
   up <- cfg$mcmc$updater %||% list()
+  mode_info <- hmsc_normalize_random_mode(cfg$model$random_mode %||% "none", cfg$model$spatial_method %||% "NNGP")
   advanced_type <- gsub("[^a-z0-9]+", "_", tolower(trimws(as.character(cfg$model$random_level_type %||% "none"))))
   advanced_type <- gsub("^_|_$", "", advanced_type)
   gamma_eta <- isTRUE(up$GammaEta)
-  if (advanced_type == "covariate_dependent_xdata") {
+  if (advanced_type == "covariate_dependent_xdata" || mode_info$spatial_method %in% c("GPP", "NNGP")) {
     gamma_eta <- FALSE
   }
   list(
@@ -1431,14 +1645,15 @@ response_family_messages <- function(Ymat, family, engine = "engine") {
 validate_one_sided_formula <- function(formula_text, data, label = "formula") {
   ok <- TRUE
   msg <- character()
-  if (is.null(data) || !nzchar(trimws(formula_text %||% ""))) return(list(ok = ok, messages = msg))
+  formula_text <- paste(as.character(formula_text %||% ""), collapse = " ")
+  if (is.null(data) || !nzchar(trimws(formula_text))) return(list(ok = ok, messages = msg))
   f <- tryCatch(as.formula(formula_text), error = function(e) e)
   if (inherits(f, "error")) {
     return(list(ok = FALSE, messages = paste0(label, " is not a valid R formula: ", conditionMessage(f))))
   }
-  vars <- all.vars(f)
+  vars <- setdiff(all.vars(f), ".")
   missing <- setdiff(vars, colnames(data))
-  if (length(missing) > 0 && trimws(formula_text) != "~ .") {
+  if (length(missing) > 0) {
     ok <- FALSE
     msg <- c(msg, paste0(label, " variables missing from data: ", paste(missing, collapse = ", ")))
   }
@@ -1545,6 +1760,11 @@ run_hmsc_s1s7_pipeline <- function(outdir, cfg, Y, XData, TrData = NULL, studyDe
     advanced_random_type <- cfg$model$random_level_type %||% "none"
     advanced_random_key <- gsub("^_|_$", "", gsub("[^a-z0-9]+", "_", tolower(trimws(as.character(advanced_random_type)))))
     if (advanced_random_key == "covariate_dependent_xdata") updater_GammaEta <- FALSE
+    if (spatial_method %in% c("GPP", "NNGP")) updater_GammaEta <- FALSE
+    if (identical(spatial_method, "GPP") && isTRUE(alignPost)) {
+      alignPost <- FALSE
+      result$warnings <- c(result$warnings, "Hmsc alignPost was disabled for GPP spatial quick fitting because alignPosterior can return NA with tiny smoke-test posterior samples.")
+    }
     advanced_sMethod <- hmsc_normalize_spatial_method(cfg$model$sMethod %||% "NNGP")
     random_N <- as.integer(cfg$model$random_N %||% 1)
     units_column <- cfg$model$units_column %||% "sample"
@@ -2000,6 +2220,12 @@ run_hmsc_s1s7_pipeline <- function(outdir, cfg, Y, XData, TrData = NULL, studyDe
     random_mode <- random_level$mode_info$mode
     if (!is.null(random_level$studyDesign) && !is.null(random_level$ranLevels)) {
       model_args$studyDesign <- random_level$studyDesign
+      model_args$studyDesign <- as.data.frame(model_args$studyDesign, stringsAsFactors = FALSE, check.names = FALSE)
+      for (sd_col in names(model_args$studyDesign)) {
+        if (!is.factor(model_args$studyDesign[[sd_col]])) {
+          model_args$studyDesign[[sd_col]] <- hmsc_factor_preserve_order(model_args$studyDesign[[sd_col]])
+        }
+      }
       model_args$ranLevels <- random_level$ranLevels
       ranLevelsUsed <- trimws(unlist(strsplit(as.character(cfg$model$ranLevelsUsed %||% ""), ",")))
       ranLevelsUsed <- ranLevelsUsed[nzchar(ranLevelsUsed)]
@@ -2033,6 +2259,10 @@ run_hmsc_s1s7_pipeline <- function(outdir, cfg, Y, XData, TrData = NULL, studyDe
     verbose <- as.integer(cfg$mcmc$verbose %||% 10)
     initPar <- hmsc_normalize_initPar(cfg$mcmc$initPar %||% "fixed effects")
     alignPost <- isTRUE(cfg$mcmc$alignPost %||% TRUE)
+    if (identical(random_mode, "spatial_gpp") && isTRUE(alignPost)) {
+      alignPost <- FALSE
+      result$warnings <- c(result$warnings, "Hmsc alignPost was disabled for GPP spatial fitting because alignPosterior can fail with NA latent-factor summaries in quick/small posterior runs.")
+    }
     fromPrior <- isTRUE(cfg$mcmc$sample_prior %||% FALSE)
     updater <- hmsc_build_mcmc_updater(cfg)
     fitted <- list()
@@ -3303,14 +3533,6 @@ pre.logbox{background:#0f172a;color:#d1fae5;padding:16px;border-radius:18px;min-
 @media (max-width: 700px){.sync-control-row{grid-template-columns:1fr;}.sync-scale{white-space:normal;}}
 .file-preview-shell{background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:0 10px 28px rgba(15,23,42,.06);}
 .file-preview-meta{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:12px;margin:8px 0 14px 0;}
-.benchmark-upload-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:14px;margin:12px 0 18px 0;}
-.benchmark-upload-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 10px 24px rgba(15,23,42,.055);}
-.benchmark-upload-card .form-group{margin-bottom:8px;}
-.benchmark-upload-meta{font-size:12px;color:#475569;line-height:1.45;background:#f8fafc;border:1px solid #e2e8f0;border-radius:13px;padding:10px;margin-top:8px;}
-.benchmark-upload-meta b{color:#0f172a;}
-.required-tag{display:inline-block;border-radius:999px;background:#ecfdf5;color:#166534;border:1px solid #bbf7d0;font-size:11px;font-weight:850;padding:3px 8px;margin-bottom:8px;}
-.advanced-upload-box{border:1px dashed #cbd5e1;border-radius:16px;background:#f8fafc;padding:13px;margin-top:12px;}
-.advanced-upload-box summary{font-weight:900;cursor:pointer;color:#334155;}
 .mode-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:10px 0 16px 0;}
 .mode-card{border:1px solid #dbe5f0;border-radius:16px;background:#fff;padding:12px;min-height:102px;}
 .mode-card b{display:block;color:#0f172a;margin-bottom:5px;}
@@ -3575,58 +3797,6 @@ www_asset_src <- function(src) {
   }
   src
 }
-univ_file_contract <- function() {
-  rows <- list(
-    list(key = "y_occurrence", filename = "Y_occurrence.csv", role = "Occurrence response matrix. Rows are site_id, columns are shared species names, values must be 0/1.", format = "CSV with row names or a first site_id column; species columns such as sp_1, sp_2.", used_by = "Hmsc, Hmsc-HPC, jSDM, GJAM PA, sjSDM, boral binomial", example = "36 sites x 6 species; no all-zero or all-one species."),
-    list(key = "y_count", filename = "Y_count.csv", role = "Count response matrix from the same latent community truth. Values must be non-negative integers.", format = "CSV with site_id rows and species columns.", used_by = "GJAM count extension and model-family checks", example = "Small Poisson-like counts for the same site/species IDs."),
-    list(key = "y_normal", filename = "Y_normal.csv", role = "Continuous response matrix from the same latent community truth.", format = "CSV with site_id rows and species columns; numeric continuous values.", used_by = "GJAM normal extension and response-family checks", example = "Continuous abundance or transformed biomass style response."),
-    list(key = "xdata", filename = "XData.csv", role = "Site-level environmental predictors. Numeric columns become numeric; categorical columns such as substrate become factors.", format = "CSV rows must match Y rows. Include site_id or row names.", used_by = "All engines", example = "pH, moisture, canopy, substrate, elevation."),
-    list(key = "traits", filename = "traits.csv", role = "Species trait table. Rows must match the Y species columns exactly.", format = "CSV rows are species; columns may be numeric or categorical traits.", used_by = "Hmsc, Hmsc-HPC, boral and unified reports", example = "life_form, height_mm, reproduction."),
-    list(key = "study_design", filename = "studyDesign.csv", role = "Sampling design and grouping variables. Character grouping columns are converted to factors.", format = "CSV rows must match Y rows. Include sample, site, plot or year columns.", used_by = "Hmsc, Hmsc-HPC random effects and grouped CV", example = "sample, plot, site, year."),
-    list(key = "coordinates", filename = "coordinates.csv", role = "Site coordinates for spatial workflows and distance calculations.", format = "CSV rows must match Y rows. Include x/y or longitude/latitude numeric columns.", used_by = "Hmsc, Hmsc-HPC, spOccupancy spatial checks, boral distance support", example = "longitude, latitude."),
-    list(key = "phylogeny", filename = "phylogeny.nwk", role = "Newick phylogeny whose tip labels exactly match Y species columns.", format = "Plain text Newick tree.", used_by = "Hmsc and Hmsc-HPC phylogeny checks", example = "(sp_1:0.1,sp_2:0.1,...);"),
-    list(key = "phylo_cov", filename = "phylo_cov.csv", role = "Species phylogenetic or taxonomic covariance matrix matching species order.", format = "Square CSV with species row and column names.", used_by = "Hmsc-HPC and Hmsc correlation-matrix fallback", example = "6 x 6 positive-definite covariance matrix."),
-    list(key = "newdata", filename = "newdata.csv", role = "Prediction covariates for new sites.", format = "CSV with predictor columns matching XData; include site_id if available.", used_by = "All prediction-capable engines", example = "New pH, moisture, canopy, substrate, elevation values."),
-    list(key = "newcoords", filename = "newcoords.csv", role = "Prediction-site coordinates matching newdata rows.", format = "CSV with x/y or longitude/latitude numeric columns.", used_by = "Spatial prediction workflows", example = "New longitude, latitude values."),
-    list(key = "folds", filename = "folds.csv", role = "Cross-validation or holdout assignment for sites.", format = "CSV with site_id and fold columns.", used_by = "Unified validation and compare reports", example = "fold values 1, 2 or 3."),
-    list(key = "trial_size", filename = "trial.size.csv", role = "Binomial trial sizes for engines that need explicit trials.", format = "CSV matching Y dimensions or a scalar-compatible table.", used_by = "boral binomial and GJAM/binomial checks", example = "All ones for presence-absence benchmark."),
-    list(key = "offset", filename = "offset.csv", role = "Optional offset matrix on the observation scale.", format = "CSV matching Y dimensions; numeric values.", used_by = "boral and GJAM offset-compatible workflows", example = "Zeros for default benchmark."),
-    list(key = "row_ids", filename = "row.ids.csv", role = "boral row-effect IDs for ordination or row random effects.", format = "CSV with one row per site; IDs are factors.", used_by = "boral", example = "site_group or row_group."),
-    list(key = "ranef_ids", filename = "ranef.ids.csv", role = "boral random-effect IDs.", format = "CSV with one row per site; IDs are factors.", used_by = "boral", example = "plot or block."),
-    list(key = "distmat", filename = "distmat.csv", role = "Distance matrix among sites for spatial or ordination diagnostics.", format = "Square CSV with site row and column names.", used_by = "boral, spatial diagnostics and reports", example = "Euclidean distance from coordinates."),
-    list(key = "spocc_y_detection", filename = "spOccupancy_y_detection.csv", role = "Replicated detection-nondetection observations for occupancy models.", format = "Long or wide CSV with site_id, species, visit and detection values 0/1.", used_by = "spOccupancy", example = "n_sites x n_species x n_visits records."),
-    list(key = "occ_covs", filename = "occ.covs.csv", role = "Occupancy-state covariates for spOccupancy, aligned to site_id.", format = "CSV rows are sites; predictor columns match occurrence formula.", used_by = "spOccupancy occurrence process", example = "pH, moisture, canopy, substrate, elevation."),
-    list(key = "det_covs", filename = "det.covs.csv", role = "Detection-process covariates for spOccupancy, aligned to site and visit.", format = "CSV long table with site_id, visit and detection covariates.", used_by = "spOccupancy detection process", example = "observer, wind, effort."),
-    list(key = "truth_latent", filename = file.path("truth", "latent_occurrence.csv"), role = "Latent true occupancy states used to generate observations.", format = "CSV with site_id rows and species columns.", used_by = "Truth comparison only", example = "0/1 latent Z matrix."),
-    list(key = "truth_probability", filename = file.path("truth", "occurrence_probability.csv"), role = "True occurrence probability for every site and species.", format = "CSV with site_id rows and species columns; values in [0,1].", used_by = "Prediction truth comparison", example = "Probability matrix from the latent ecological model."),
-    list(key = "truth_effects", filename = file.path("truth", "true_environment_effects.csv"), role = "Known predictor-to-species effects used for direction-recovery checks.", format = "CSV with species, predictor and estimate columns.", used_by = "Effect-direction benchmark", example = "sp_1, pH, 0.6."),
-    list(key = "truth_associations", filename = file.path("truth", "true_species_associations.csv"), role = "Known species association structure from the latent truth.", format = "CSV with species_i, species_j and estimate columns.", used_by = "Association recovery benchmark", example = "sp_1, sp_2, 0.25."),
-    list(key = "truth_predictions", filename = file.path("truth", "true_predictions.csv"), role = "Truth-aligned prediction table on the shared site/species ID scale.", format = "CSV with site_id, species and truth_probability columns.", used_by = "Prediction metrics and reports", example = "site_01, sp_1, 0.72."),
-    list(key = "truth_config", filename = file.path("truth", "data_generation_config.yml"), role = "Reproducible data-generation settings.", format = "YAML with n_sites, n_species, n_visits, seed and parameter settings.", used_by = "Reports and reproducibility", example = "seed: 20260601."),
-    list(key = "truth_script", filename = file.path("truth", "data_generation_script.R"), role = "Executable script that rebuilds the benchmark input files.", format = "R script.", used_by = "Reproducible scripts and reviewer audit", example = "Run this script to regenerate the benchmark case.")
-  )
-  out <- do.call(rbind, lapply(rows, function(x) as.data.frame(x, stringsAsFactors = FALSE)))
-  out$required <- TRUE
-  out
-}
-univ_file_accept <- function(filename) {
-  ext <- tolower(tools::file_ext(filename))
-  if (identical(ext, "csv")) return(c(".csv", ".tsv", ".txt"))
-  if (identical(ext, "nwk")) return(c(".nwk", ".tree", ".txt"))
-  if (ext %in% c("yml", "yaml")) return(c(".yml", ".yaml", ".txt"))
-  if (identical(ext, "r")) return(c(".R", ".r", ".txt"))
-  c(".csv", ".tsv", ".txt", ".nwk", ".yml", ".yaml", ".R")
-}
-univ_file_upload_card <- function(row) {
-  div(class = "benchmark-upload-card",
-      span(class = "required-tag", if (isTRUE(row$required)) "Required for all-model benchmark" else "Optional"),
-      fileInput(paste0("univ_file_", row$key), row$filename, accept = univ_file_accept(row$filename)),
-      div(class = "benchmark-upload-meta",
-          div(tags$b("What to upload: "), row$role),
-          div(tags$b("Format: "), row$format),
-          div(tags$b("Used by: "), row$used_by),
-          div(tags$b("Example: "), row$example)))
-}
 engine_card <- function(icon, title, tag, best, items, warning = NULL, image = NULL) {
   div(class="engine-card",
       if (!is.null(image)) tags$img(src = www_asset_src(image), class = "engine-card-img", alt = paste(title, "workflow image")),
@@ -3659,6 +3829,72 @@ file_preview_block <- function(prefix, title = "Uploaded data preview") {
       ),
       div(class="small-muted", "CSV/TSV previews show up to 100 rows; tree/text files show the first lines; binary files are listed but not parsed.")
   )
+}
+reviewer_lens_card <- function(mark, title, body, checks = NULL, caution = NULL) {
+  div(class="cardx",
+      h3(span(class="engine-mark", mark), title),
+      p(class="small-muted", body),
+      if (!is.null(checks)) tagList(tags$b("Reviewer checks"), tags$ul(lapply(checks, tags$li))),
+      if (!is.null(caution)) div(class="warn", caution)
+  )
+}
+workflow_review_note <- function(title, bullets, caution = NULL) {
+  div(class="note",
+      tags$b(title),
+      tags$ul(lapply(bullets, tags$li)),
+      if (!is.null(caution)) div(class="warn", caution)
+  )
+}
+parameter_story_card <- function(title, why, check, pitfall = NULL) {
+  div(class="cardx",
+      h3(title),
+      p(class="small-muted", why),
+      tags$b("Before fitting"),
+      p(check),
+      if (!is.null(pitfall)) div(class="warn", pitfall)
+  )
+}
+software_review_notice <- function() {
+  div(class="note",
+      tags$b("Scientific review mode: "),
+      "The interface now explains each major modelling choice as a data contract, an ecological claim and a reproducibility requirement. Use the text as a checklist before treating any fitted object as an ecological result."
+  )
+}
+parameter_literacy_grid <- function() {
+  div(class="nature-ribbon",
+      visual_card("Y", "Response contract", "Y must match the chosen family: binary for probit/binomial, non-negative integers for counts, continuous values for normal/Gaussian models."),
+      visual_card("X", "Predictor contract", "Numeric columns are coerced to numeric; categorical columns are treated as factors when the engine supports factors."),
+      visual_card("R", "Random/spatial meaning", "A random level defines the scale of residual structure. Spatial parameters describe distance-aware structure, not a generic interaction effect."),
+      visual_card("M", "MCMC and diagnostics", "Quick settings are software tests. Publication settings require multiple chains, convergence diagnostics and documented failures."),
+      visual_card("Z", "Reproducibility output", "Every run should leave used_config.yml, copied inputs, diagnostics, standard tables, executable scripts and a real ZIP.")
+  )
+}
+parameter_dictionary_data <- function() {
+  path <- file.path(app_dir, "docs", "JSDMStudio_Parameter_Dictionary.csv")
+  fallback <- data.frame(
+    workflow = "Application",
+    input_id = "parameter_dictionary",
+    control_type = "generated",
+    label = "Parameter dictionary",
+    semantic_role = "output / reproducibility",
+    detailed_explanation = "The parameter dictionary CSV was not found. Rebuild docs/JSDMStudio_Parameter_Dictionary.csv from app.R before release.",
+    check_before_running = "Run the static Shiny input/output audit before packaging.",
+    common_mistake = "Packaging the app without the reviewer-facing parameter dictionary.",
+    output_connection = "docs/JSDMStudio_Parameter_Dictionary.csv",
+    reviewer_note = "Missing dictionary is not fatal for fitting, but weakens reviewer-facing documentation.",
+    stringsAsFactors = FALSE
+  )
+  if (!file.exists(path)) return(fallback)
+  out <- tryCatch(
+    read.csv(path, check.names = FALSE, stringsAsFactors = FALSE, fileEncoding = "UTF-8-BOM"),
+    error = function(e) fallback
+  )
+  required <- names(fallback)
+  missing_cols <- setdiff(required, names(out))
+  if (length(missing_cols)) {
+    for (nm in missing_cols) out[[nm]] <- ""
+  }
+  out[, required, drop = FALSE]
 }
 plain_num <- function(x) {
   format(as.numeric(x), scientific = FALSE, trim = TRUE, big.mark = ",")
@@ -3765,9 +4001,11 @@ ui <- navbarPage(
     fluidPage(
       hero(
         "JSDM Studio",
-        "A reviewer-oriented ecological modelling workbench with separate workflows: Hmsc, Hmsc-HPC, jSDM, GJAM, spOccupancy, sjSDM and boral are run as separate engines. Every run must leave an auditable folder, a status file and executable scripts before it is interpreted.",
-        c("Separate workflows", "Hmsc and Hmsc-HPC side by side", "Seven JSDM engines", "Engine-specific outputs", "Reproducible scripts")
+        "A reviewer-oriented ecological modelling workbench with separate workflows, rich parameter explanations and auditable outputs. Hmsc, Hmsc-HPC, jSDM, GJAM, spOccupancy, sjSDM and boral are run as separate engines; each result must be traceable to its input data, settings, diagnostics and exported scripts.",
+        c("Review-grade explanations", "Separate engine contracts", "Seven JSDM engines", "Universal benchmark", "Executable scripts")
       ),
+      software_review_notice(),
+      parameter_literacy_grid(),
       div(class="metric-grid",
           metric("H", "Hmsc / Hmsc-HPC", "Twin HMSC panels", "Classic R Hmsc and CPU pyhmsc/Hmsc-HPC are adjacent but not mixed."),
           metric("7", "Seven engines", "Full workbench", "Hmsc, Hmsc-HPC, jSDM, GJAM, spOccupancy, sjSDM and boral keep separate checks and outputs."),
@@ -3792,6 +4030,16 @@ ui <- navbarPage(
       div(class="note",
           tags$b("Developer-reference framing: "),
           "JSDM Studio is not just a GUI wrapper. It is an engine-specific, auditable workflow system: every engine has a declared input contract, parameter contract, output contract, status contract and reproducible script contract."
+      ),
+      div(class="cardx",
+          h3("What this cover page is meant to do"),
+          p(class="small-muted", "A software paper, methods reviewer or lab user should be able to see the design logic before running anything."),
+          tags$ul(
+            tags$li("It separates ecological questions from engine-specific implementation details."),
+            tags$li("It states that residual associations are not direct proof of biotic interactions."),
+            tags$li("It treats failed dependency checks as reproducible evidence, not as hidden failures."),
+            tags$li("It keeps the GUI useful only when it exports scripts and a complete output folder.")
+          )
       )
     )
   ),
@@ -3856,9 +4104,9 @@ ui <- navbarPage(
               ),
               fluidRow(
                 column(4, selectInput("project_response_structure", "Response structure",
-                  choices = c("single response type", "mixed response types", "composition data", "presence/count/continuous mixture", "unknown"),
+                  choices = c("single response type", "detection-nondetection occupancy surveys", "mixed response types", "composition data", "presence/count/continuous mixture", "unknown"),
                   selected = "single response type"),
-                  help_text("Mixed response types or compositions usually point toward GJAM.")),
+                  help_text("Detection-nondetection surveys usually point toward spOccupancy. Mixed response types or compositions usually point toward GJAM.")),
                 column(4, checkboxInput("project_has_traits", "Has traits / response attributes", FALSE),
                        help_text("Traits are native to Hmsc trait models, supported in the Hmsc-HPC CPU subset, and central to boral fourth-corner-style workflows. Other engines use traits only through their own documented interfaces.")),
                  column(4, checkboxInput("project_has_phylogeny", "Has phylogeny / taxonomy", FALSE),
@@ -3892,6 +4140,25 @@ ui <- navbarPage(
   tabPanel("Engine Guide",
     fluidPage(
       section_header("Engine guide", "This page helps users decide before running a model."),
+      software_review_notice(),
+      fluidRow(
+        column(6,
+          reviewer_lens_card("Q", "Choose by scientific question",
+            "A JSDM engine is not chosen by menu convenience. It is chosen by response scale, detection process, trait/phylogeny needs, spatial structure, computational constraints and the interpretation needed for the paper.",
+            c("Does the response family match the observed Y values?",
+              "Are traits, phylogeny, detection or mixed response scales central to the question?",
+              "Is the desired output an effect estimate, a prediction, an association pattern, an ordination or a diagnostic object?"),
+            "Do not call two engines equivalent just because both output a CSV named associations_long.csv.")
+        ),
+        column(6,
+          reviewer_lens_card("R", "Interpret after diagnostics",
+            "The interface is designed so that status, diagnostics and output completeness are checked before ecological interpretation.",
+            c("fitted means the engine produced fitted outputs and standard summaries; it does not prove convergence, identifiability or ecological adequacy.",
+              "model_defined means the boundary was built but fitted posterior results are not claimed.",
+              "check_failed and fit_failed are valid audit outcomes and should point to diagnostics."),
+            "Quick-test settings only prove the pipeline. They are not publication-quality MCMC settings.")
+        )
+      ),
       fluidRow(
         column(6,
           engine_card("H", "Hmsc", "rich ecological workflow",
@@ -3958,7 +4225,7 @@ ui <- navbarPage(
           engine_card("S", "s-jSDM / sjSDM", "scalable big-community JSDM",
             "sjSDM is often useful for large community matrices such as eDNA, metabarcoding, microbiome and high-dimensional presence/count/continuous response data. It uses PyTorch/reticulate and can run on CPU or GPU.",
             c("You have hundreds or thousands of species/OTUs/responses.",
-              "You need fast full-covariance species association inference without latent variables.",
+              "You need scalable species association inference through sjSDM's biotic structure rather than Hmsc-style random-level Omega.",
               "You want elastic-net regularization of environmental, spatial and biotic association components.",
               "You want variation partitioning / ANOVA, internal metacommunity structure and assembly-effect plots."),
             "sjSDM requires Python/PyTorch through reticulate. It does not replace engines for phylogeny, imperfect detection or Hmsc-style variance partitioning.",
@@ -3999,6 +4266,12 @@ ui <- navbarPage(
     fluidPage(
       section_header("HMSC workflow", "Detailed, safe and reproducible workflow for Hierarchical Modelling of Species Communities. This panel is placed first because HMSC is the main trait, phylogeny, random-effect, spatial and variance-partitioning engine."),
       workflow_banner("engine_hmsc.svg", "HMSC ecological hierarchy", "Use HMSC when the analysis depends on traits, phylogeny, random effects, spatial structure, variance partitioning and interpretable Beta/Gamma/Omega outputs."),
+      workflow_review_note("Reviewer interpretation guide",
+        c("Beta summarizes environmental effects on the engine's latent or link scale; interpretation depends on the selected distribution.",
+          "Gamma is meaningful only when TrData has one correctly named row per species and TrFormula is scientifically justified.",
+          "Omega is residual association at the selected random level; it is evidence of unexplained co-occurrence structure, not direct proof of species interactions.",
+          "Spatial Full, NNGP and GPP are different spatial random-level choices; do not mix their settings in one run."),
+        "Run a tiny test first to prove paths, formulas and output scripts, then increase samples, transient, thin and chains for inference."),
       div(class="safe",
           tags$b("One-click default: "),
           "Upload Y.csv and XData.csv, keep distr = probit for 0/1 data, keep Random effect mode = none, keep traits/phylogeny off, then click Check HMSC data and Run HMSC workflow. All optional advanced settings have safe defaults."),
@@ -4342,6 +4615,12 @@ ui <- navbarPage(
     fluidPage(
       section_header("Hmsc-HPC workflow", "CPU Python-native workflow for Hmsc-HPC / pyhmsc. This panel sits beside Hmsc because it is related scientifically, but it has its own supported feature set and output contract."),
       workflow_banner("engine_hmschpc.svg", "Hmsc-HPC CPU native pipeline", "Compile raw community data to pyhmsc JSON/HDF5, validate the sampler boundary, run TensorFlow on CPU and export reproducible posterior summaries."),
+      workflow_review_note("Reviewer interpretation guide",
+        c("This workflow is a CPU pyhmsc/HDF5 path, not a full graphical replacement for every R Hmsc feature.",
+          "Use it for supported fixed, trait, phylogeny covariance/Newick, iid random-intercept and spatial_full random-intercept cases.",
+          "Eta/Lambda-derived random-level summaries are not numerically the same object as R Hmsc Omega.",
+          "Compilation or validation without posterior sampling is model_defined, not fitted."),
+        "If Python, TensorFlow, h5py or pyhmsc are missing, the run must end as check_failed or fit_failed with diagnostics, not Completed."),
       div(class="safe",
           tags$b("One-click CPU default: "),
           "Upload Y.csv and XData.csv, keep distribution = poisson for count data, keep Random level design = none, keep traits/phylogeny off, then click Check Hmsc-HPC data and Run Hmsc-HPC workflow."),
@@ -4504,6 +4783,12 @@ ui <- navbarPage(
     fluidPage(
       section_header("jSDM workflow", "A separate workflow for jSDM. It has its own data check, model type, latent variables, site effects, priors and outputs."),
       workflow_banner("engine_jsdm.svg", "jSDM latent-variable workflow", "Use jSDM for Bayesian community regression with latent variables, MCMC summaries and residual/environmental correlation outputs."),
+      workflow_review_note("Reviewer interpretation guide",
+        c("Select the jSDM function only after checking whether Y is binary, count or continuous.",
+          "Latent variables and site effects change the meaning of residual correlations; document the selected branch.",
+          "Trait effects are jSDM-specific gamma parameters and should not be described as Hmsc Gamma unless the model definition matches.",
+          "Prediction tables must be mapped back to site and species IDs before comparison."),
+        "jSDM residual/environmental correlations are useful comparison summaries, but they are not Hmsc Omega or boral residual correlations."),
       accordion(
         open = c("1. jSDM data upload", "3. jSDM model settings"),
         accordion_panel("1. jSDM data upload",
@@ -4773,6 +5058,12 @@ ui <- navbarPage(
     fluidPage(
       section_header("GJAM workflow", "A separate workflow for Generalized Joint Attribute Modeling. GJAM is best for mixed ecological responses: presence/absence, counts, continuous abundance, ordinal scores, categorical classes, compositions, censored and zero-heavy data."),
       workflow_banner("engine_gjam.svg", "GJAM mixed-response workflow", "Use GJAM when response columns have different ecological scales or need response-type metadata, censoring, sensitivity analysis and inverse prediction."),
+      workflow_review_note("Reviewer interpretation guide",
+        c("typeNames are the model contract: PA, CON, CA, DA, FC, CC, OC and CAT encode different observation scales.",
+          "GJAM outputs are often observation-scale summaries; record the scale before comparing with link-scale effects from other engines.",
+          "Censoring, effort and composition constraints are not decorative inputs; they change the likelihood and interpretation.",
+          "Inverse prediction is a GJAM-specific workflow, not a generic JSDM feature."),
+        "A wrong typeNames table can make a technically successful run scientifically invalid."),
       accordion(
         open = c("1. GJAM data upload", "3. GJAM model settings"),
         accordion_panel("1. GJAM data upload",
@@ -4984,6 +5275,12 @@ ui <- navbarPage(
     fluidPage(
       section_header("spOccupancy workflow", "A separate workflow for occupancy models with imperfect detection. Use this for replicated detection-nondetection data, spatial occupancy, multi-species occupancy, integrated data sources, latent-factor JSDMs, temporal models and spatially varying coefficient models."),
       workflow_banner("engine_spoccupancy.svg", "spOccupancy detection workflow", "Use spOccupancy when the data include replicated surveys, imperfect detection, occupancy state uncertainty, spatial NNGP models or integrated data sources."),
+      workflow_review_note("Reviewer interpretation guide",
+        c("The response is a detection history, not a simple community matrix, when detection probability is modeled.",
+          "Occurrence covariates affect occupancy psi; detection covariates affect detection probability p and must be reported separately.",
+          "Spatial, latent-factor, integrated and SVC branches answer different questions and should not be mixed casually.",
+          "Prediction can target occupancy, detection or latent state depending on the fitted model."),
+        "If replicated visits or detection covariates are missing, use a different engine or an occupancy branch that matches the available design."),
       accordion(
         open = c("1. spOccupancy data upload", "3. spOccupancy model settings"),
         accordion_panel("1. spOccupancy data upload",
@@ -5187,6 +5484,12 @@ ui <- navbarPage(
     fluidPage(
       section_header("s-jSDM / sjSDM workflow", "A separate workflow for scalable joint species distribution modelling with PyTorch. Use this for large community matrices, eDNA/OTU data, fast full-covariance JSDMs, elastic-net regularization, deep neural network response functions and variation partitioning."),
       workflow_banner("engine_sjsdm.svg", "sjSDM scalable covariance workflow", "Use sjSDM for large species matrices, eDNA/OTU style data, PyTorch-backed fitting, elastic-net regularization and metacommunity variation partitioning."),
+      workflow_review_note("Reviewer interpretation guide",
+        c("sjSDM is strongest for scalable community matrices, regularized environmental/spatial modules and covariance summaries.",
+          "PyTorch, reticulate and device selection are part of the reproducibility contract.",
+          "Regularization changes coefficient magnitude and sparsity; report alpha/lambda choices and tuning logic.",
+          "Traits in this workflow support interpretation and assembly-effect outputs rather than a direct Hmsc-style trait hierarchy."),
+        "sjSDM covariance/correlation outputs are not direct evidence of interactions and are not Hmsc Omega."),
       accordion(
         open = c("1. sjSDM data upload", "3. sjSDM model settings"),
         accordion_panel("1. sjSDM data upload",
@@ -5346,6 +5649,12 @@ ui <- navbarPage(
     fluidPage(
       section_header("boral workflow", "A separate workflow for Bayesian Ordination and Regression AnaLysis. Use this for model-based ordination, residual ordination, correlated response GLMs, latent variables, traits/fourth-corner style effects, SSVS variable selection and Bayesian MCMC diagnostics through JAGS."),
       workflow_banner("engine_boral.svg", "boral ordination and JAGS workflow", "Use boral for Bayesian ordination, latent-variable GLMs, fourth-corner trait models, random effects, SSVS and JAGS-based MCMC diagnostics."),
+      workflow_review_note("Reviewer interpretation guide",
+        c("Choose the family and trial.size contract before fitting; binomial data need compatible trial counts.",
+          "Latent variables define ordination and residual dependence, so num.lv and lv.type are scientific choices.",
+          "Traits and XData support fourth-corner-style interpretation only when row/column matching is correct.",
+          "row.ids and ranef.ids are grouping contracts and should be coerced to factors when used."),
+        "boral requires system JAGS plus R packages. Missing JAGS should be reported as check_failed or fit_failed with diagnostics."),
       accordion(
         open = c("1. boral data upload", "3. boral model settings"),
         accordion_panel("1. boral data upload",
@@ -5555,9 +5864,15 @@ ui <- navbarPage(
     fluidPage(
       section_header("Universal Benchmark", "One reproducible benchmark layer that derives engine-specific inputs from one latent ecological truth, runs engines sequentially, writes per-engine ZIPs and creates one all-model benchmark ZIP."),
       workflow_banner("jsdm_workflow.svg", "Run all models from one ecological truth", "Use this panel for software validation and transparent cross-engine comparison. It does not force one CSV into all engines; it generates matched Hmsc, Hmsc-HPC, jSDM, GJAM, spOccupancy, sjSDM and boral inputs with shared site, species and predictor IDs."),
+      workflow_review_note("Reviewer interpretation guide",
+        c("Synthetic mode starts from one latent ecological truth and derives engine-specific inputs with shared site_id, species and predictor names.",
+          "Built-in case mode is a small real-style demonstration for software validation, not evidence for a biological claim.",
+          "Uploaded benchmark ZIP mode expects the complete benchmark contract, not one generic CSV for every model.",
+          "The master report compares workflow status, output completeness, prediction metrics and direction agreement; it does not equate raw association parameters across engines."),
+        "Run all engines sequentially on Windows to reduce conflicts among JAGS, reticulate, PyTorch and Hmsc-HPC Python."),
       div(class="warn", tags$b("Benchmark warning: "), "Quick sampler settings are for software validation only. A fitted benchmark run proves that the workflows and output contracts execute; it is not publication-quality convergence evidence."),
       accordion(
-        open = c("1. Benchmark design", "2. Generate or import benchmark data", "4. Run all engines sequentially", "7. Download"),
+        open = c("1. Benchmark design", "2. Generate benchmark data", "4. Run all engines sequentially", "7. Download"),
         accordion_panel("1. Benchmark design",
           fluidRow(
             column(3, synced_numeric_slider("univ_n_sites", "observations / sites", value = 36, min = 30, max = 40, step = 1,
@@ -5580,8 +5895,7 @@ ui <- navbarPage(
               radioButtons("univ_data_source", "Benchmark data source",
                 choices = c("Generate from latent ecological truth" = "synthetic",
                             "Use built-in real-style example case" = "builtin",
-                            "Upload real benchmark files one by one" = "upload_files",
-                            "Advanced: upload complete benchmark ZIP" = "upload_zip"),
+                            "Upload real benchmark ZIP" = "upload"),
                 selected = "synthetic"),
               actionButton("univ_generate", "Generate benchmark data", class = "btn-primary"),
               div(class="note", "Synthetic mode writes examples/universal_benchmark/ with occurrence, count, normal, spOccupancy detection data, traits, study design, coordinates, phylogeny, distance matrix and truth files."),
@@ -5590,24 +5904,15 @@ ui <- navbarPage(
               actionButton("univ_use_builtin", "Use selected example case", class = "btn-primary"),
               div(class="note", "Built-in cases are small real-style ecological examples with matched IDs and complete truth/diagnostic files."),
               hr(),
-              actionButton("univ_import_files", "Import uploaded benchmark files", class = "btn-primary"),
-              div(class="note", tags$b("Real-data upload: "), "Upload each benchmark file below. The annotation beside every file says exactly what rows, columns and IDs are expected. This is the recommended real-data path because it makes missing or mismatched files visible before fitting."),
-              tags$details(class = "advanced-upload-box",
-                tags$summary("Advanced ZIP import for already prepared benchmark folders"),
-                fileInput("univ_data_zip", "Upload complete benchmark input ZIP", accept = c(".zip")),
-                actionButton("univ_import_zip", "Import uploaded benchmark ZIP", class = "btn-primary"),
-                div(class="small-muted", "ZIP must contain the standard benchmark files at its root or inside one top-level folder. It must not be one raw CSV forced into every engine.")
-              )
+              fileInput("univ_data_zip", "Upload benchmark input ZIP", accept = c(".zip")),
+              actionButton("univ_import_zip", "Import uploaded benchmark ZIP", class = "btn-primary"),
+              div(class="note", "ZIP must contain the standard benchmark files at its root or inside one top-level folder. It must not be one raw CSV forced into every engine.")
             ),
             column(8,
               div(class="cardx", h3("Benchmark data summary"), verbatimTextOutput("univ_data_summary")),
               div(class="cardx", h3("Required benchmark input contract"), DTOutput("univ_required_files"))
             )
           ),
-          div(class="cardx",
-              h3("Upload real benchmark files one by one"),
-              div(class="safe", tags$b("Stable ID rule: "), "All files must use the same site_id, species, predictor, trait and coordinate names. Do not rename species between Y, traits, phylogeny and truth tables."),
-              uiOutput("univ_real_file_uploads")),
           div(class="cardx", h3("Current benchmark input files"), DTOutput("univ_input_files"))
         ),
         accordion_panel("3. Engine mapping and dependency preflight",
@@ -5738,13 +6043,101 @@ ui <- navbarPage(
           tags$ul(
             tags$li("Workflow status, output completeness, ZIP existence, script/report presence and diagnostic file presence."),
             tags$li("Runtime and file counts as practical software-performance indicators."),
-            tags$li("Prediction metrics only when the same held-out units, response scale and metric definition were used.")
+            tags$li("Dependency/preflight outcomes and whether executable reproducible scripts were exported.")
+          ),
+          tags$h4("Conditionally comparable"),
+          tags$ul(
+            tags$li("Prediction metrics only when the same held-out units, response scale and metric definition were used."),
+            tags$li("Predictor-to-species effect directions only when predictor names, scaling, contrasts, link functions and response families are documented."),
+            tags$li("Association patterns only qualitatively, with association_type, scale and engine-specific parameterization reported.")
           ),
           tags$h4("Not directly comparable"),
           tags$ul(
             tags$li("Raw coefficients when predictors were scaled, encoded or linked differently."),
             tags$li("Residual association matrices across Hmsc, Hmsc-HPC, jSDM, GJAM, spOccupancy, sjSDM and boral."),
-            tags$li("WAIC/DIC/AUC/RMSE-like values unless they target the same response scale and validation design.")
+            tags$li("WAIC/DIC/AUC/RMSE-like values unless they target the same response scale and validation design."),
+            tags$li("spOccupancy detection effects versus occurrence/environment effects, because these answer different ecological questions."),
+            tags$li("GJAM observation-scale typeNames results versus link-scale JSDM coefficients unless the scale relationship is explicit.")
+          )
+        ),
+        accordion_panel("Reviewer-style parameter explanation layer",
+          div(class="note", tags$b("Purpose: "), "This layer turns GUI controls into explicit ecological and reproducibility claims. It is original JSDM Studio guidance inspired by good explanatory interface design, not copied from any single-model interface."),
+          fluidRow(
+            column(6, parameter_story_card(
+              "Y / response matrix",
+              "Y defines the ecological observation. Rows are sites or samples; columns are species, OTUs, attributes or responses.",
+              "Check row and column names, no accidental ID column in the matrix, no all-zero/all-one species for small benchmark tests, and family-compatible values.",
+              "Do not fit probit/binomial to non-binary values or poisson/count models to negative or non-integer values."
+            )),
+            column(6, parameter_story_card(
+              "XData / environmental predictors",
+              "XData defines the covariates used to explain among-site variation in occurrence, abundance or attributes.",
+              "Check that rows match Y, formula variables exist, numeric-looking columns are numeric and categorical predictors are intended factors.",
+              "A statistically clean formula can still be ecologically weak if important drivers are omitted; residual associations may then reflect missing covariates."
+            ))
+          ),
+          fluidRow(
+            column(6, parameter_story_card(
+              "Family / distribution / typeNames",
+              "The family links observed data to the latent ecological process. GJAM typeNames extend this idea to mixed observation scales.",
+              "Check binary, count, continuous, ordinal, composition and categorical values against the selected engine-specific likelihood.",
+              "A successful run with the wrong family is worse than a visible error because the output looks authoritative but answers the wrong question."
+            )),
+            column(6, parameter_story_card(
+              "Traits and phylogeny",
+              "Traits and phylogeny explain why species differ in their environmental responses rather than why sites differ.",
+              "Check that trait rows, phylogeny tips and Y columns have exactly matching species names and order after cleaning.",
+              "With very few species, trait and phylogenetic parameters can be weakly identified; report them cautiously."
+            ))
+          ),
+          fluidRow(
+            column(6, parameter_story_card(
+              "Random effects, spatial effects and latent factors",
+              "These controls decide where non-independence lives: sample, group, spatial location, visit, latent ordination axis or species covariance.",
+              "Check that grouping IDs are factors, coordinates are non-duplicated when required, distance matrices are square and latent-factor ceilings are defensible.",
+              "Residual association is not direct proof of interaction; it can represent unmeasured environment, survey structure or shared history."
+            )),
+            column(6, parameter_story_card(
+              "MCMC, optimization and priors",
+              "Sampler settings decide whether the workflow is a software test or an inferential analysis.",
+              "Run a small smoke test first, then increase samples, burn-in/transient, thin, chains and diagnostics for real inference.",
+              "Quick defaults are intentionally small. Never report quick-test posterior summaries as publication-ready ecological estimates."
+            ))
+          ),
+          fluidRow(
+            column(6, parameter_story_card(
+              "Prediction and validation",
+              "Prediction tables must preserve site_id, species and response scale so models can be compared honestly.",
+              "Check held-out units, fold definitions, prediction covariates and new coordinates before interpreting RMSE, AUC, Tjur R2 or residuals.",
+              "Random folds on structured spatial or temporal surveys can be optimistic; blocked validation is often more defensible."
+            )),
+            column(6, parameter_story_card(
+              "Diagnostics, scripts and ZIP output",
+              "The GUI is reviewable only when every run exports executable scripts, status files, logs and a complete ZIP.",
+              "Check used_config.yml, diagnostics/engine_status.json, diagnostics/session_info.txt, standard/*.csv and report/*.html before trusting results.",
+              "Missing ZIP files, empty ZIPs and Completed statuses after failed fitting are treated as software errors."
+            ))
+          )
+        ),
+        accordion_panel("Complete parameter dictionary",
+          div(class="note",
+              tags$b("Reviewer-facing index: "),
+              "Every exposed Shiny control is indexed by workflow, inputId, control type, ecological role, pre-run check, common mistake, output connection and reviewer note."
+          ),
+          downloadButton("parameter_dictionary_download", "Download parameter dictionary CSV"),
+          br(), br(),
+          DTOutput("parameter_dictionary_table")
+        ),
+        accordion_panel("Engine-specific interpretation boundaries",
+          tags$p("These boundaries should be reflected in reports and manuscripts produced from JSDM Studio outputs."),
+          tags$ul(
+            tags$li(tags$b("Hmsc:"), " strongest for traits, phylogeny, random effects, spatial random levels, Beta/Gamma/Omega and variance partitioning; Omega remains residual association, not proof of interaction."),
+            tags$li(tags$b("Hmsc-HPC:"), " CPU pyhmsc/HDF5 workflow with a guarded supported subset; useful for Python-native HMSC runs but not a complete replacement for every R Hmsc feature."),
+            tags$li(tags$b("jSDM:"), " Bayesian latent-variable JSDM with its own priors and residual/environmental correlation summaries."),
+            tags$li(tags$b("GJAM:"), " mixed-scale observation model; typeNames and observation scale must be documented before comparison."),
+            tags$li(tags$b("spOccupancy:"), " occupancy engine for imperfect detection; detection effects and occurrence effects are different rows in standard results."),
+            tags$li(tags$b("sjSDM:"), " scalable PyTorch-backed covariance workflow; regularization and device settings are part of reproducibility."),
+            tags$li(tags$b("boral:"), " JAGS-based Bayesian ordination and latent-variable regression; latent-variable ordination and residual correlations depend on the selected family and num.lv.")
           )
         ),
         accordion_panel("Hmsc guide",
@@ -6190,17 +6583,19 @@ server <- function(input, output, session) {
 
   output$comparison_meaning_table <- renderDT({
     dat <- data.frame(
-      Item = c("Run status", "Runtime", "Prediction performance", "Main response directions", "Residual associations", "Output completeness", "Raw parameters", "Failed runs"),
-      Compare = c("Yes", "Yes", "Only under matched validation", "Cautiously", "Qualitatively only", "Yes", "No direct equality", "Diagnostics only"),
+      Item = c("Run status", "Status meaning", "Runtime", "Prediction performance", "Main response directions", "Residual associations", "Output completeness", "Raw parameters", "Failed runs", "Scientific adequacy"),
+      Compare = c("Yes", "Interpret before comparing", "Yes, as practical cost", "Only under matched validation", "Cautiously", "Qualitatively only", "Yes", "No direct equality", "Diagnostics only", "Never inferred from status alone"),
       Reason = c(
         "fitted, model_defined, check_failed and fit_failed have different meanings and are reported as workflow outcomes.",
+        "fitted means fitted outputs were produced; model_defined means a model boundary exists without fitted posterior evidence; check_failed and fit_failed are failure states with diagnostic value.",
         "Runtime is engine-specific but comparable as practical cost.",
         "Comparable only when the same training/testing split, response definition, response scale and metric definition were used.",
         "Signs and broad patterns can be compared only after checking link functions, scaling and response family.",
         "Hmsc Omega, Hmsc-HPC Eta/Lambda draws, jSDM residual correlations, GJAM corMu/sigMu, spOccupancy latent factors, sjSDM covariance and boral residual correlations are related but not numerically interchangeable.",
         "The comparison panel checks used_config.yml, standard tables, workflow maps, reports, table counts, plot counts and diagnostics counts.",
         "Different parameterizations, priors, links and latent structures.",
-        "check_failed and fit_failed are valid audit folders. They are not fitted analyses and should point to diagnostics files."
+        "check_failed and fit_failed are valid audit folders. They are not fitted analyses and should point to diagnostics files.",
+        "Convergence, identifiability, data design, family choice and ecological interpretation must still be reviewed after a fitted status."
       )
     )
     datatable(dat, options = list(dom="tip", pageLength=10), rownames=FALSE)
@@ -6214,7 +6609,9 @@ server <- function(input, output, session) {
     structure <- input$project_response_structure %||% "unknown"
     n <- input$project_n_sites %||% NA
     S <- input$project_n_responses %||% NA
-    occupancy_question <- grepl("occupancy|detection|false absence|imperfect", q, ignore.case=TRUE)
+    detection_structure <- grepl("detection|occupancy", structure, ignore.case=TRUE)
+    mixed_structure <- grepl("mixed|composition|presence/count/continuous|mixture", structure, ignore.case=TRUE)
+    occupancy_question <- detection_structure || grepl("occupancy|detection|false absence|imperfect", q, ignore.case=TRUE)
     spatial_occupancy_question <- grepl("Spatial occupancy", q, ignore.case=TRUE)
 
     if (isTRUE(input$project_has_traits)) {
@@ -6232,7 +6629,11 @@ server <- function(input, output, session) {
       reasons$sjSDM <- c(reasons$sjSDM, "spatial predictors / spatial eigenvectors / DNN spatial term")
       reasons$boral <- c(reasons$boral, "spatial latent-variable correlation via distmat")
     }
-    if (grepl("mixed|composition|mixture", structure, ignore.case=TRUE)) { scores["GJAM"] <- scores["GJAM"] + 4; scores["boral"] <- scores["boral"] + 1; reasons$GJAM <- c(reasons$GJAM, "mixed-scale or composition response structure"); reasons$boral <- c(reasons$boral, "can use different family per response column") }
+    if (detection_structure) {
+      scores["spOccupancy"] <- scores["spOccupancy"] + 6
+      reasons$spOccupancy <- c(reasons$spOccupancy, "response structure is replicated detection-nondetection occupancy")
+    }
+    if (mixed_structure) { scores["GJAM"] <- scores["GJAM"] + 4; scores["boral"] <- scores["boral"] + 1; reasons$GJAM <- c(reasons$GJAM, "mixed-scale or composition response structure"); reasons$boral <- c(reasons$boral, "can use different family per response column") }
     if (isTRUE(input$project_many_zeros)) { scores["GJAM"] <- scores["GJAM"] + 2; reasons$GJAM <- c(reasons$GJAM, "median-zero / many zeros") }
     if (isTRUE(input$project_need_prediction)) {
       scores["GJAM"] <- scores["GJAM"] + 1; scores["Hmsc"] <- scores["Hmsc"] + 1; scores["Hmsc-HPC"] <- scores["Hmsc-HPC"] + 1; scores["spOccupancy"] <- scores["spOccupancy"] + 1; scores["sjSDM"] <- scores["sjSDM"] + 2; scores["boral"] <- scores["boral"] + 1
@@ -6268,7 +6669,21 @@ server <- function(input, output, session) {
     if (grepl("Variable selection|sparse environmental", q, ignore.case=TRUE)) { scores["boral"] <- scores["boral"] + 3; scores["sjSDM"] <- scores["sjSDM"] + 2; reasons$boral <- c(reasons$boral, "SSVS variable selection"); reasons$sjSDM <- c(reasons$sjSDM, "regularized sparse effects") }
     if (grepl("Temporal|multi-season", q, ignore.case=TRUE)) { scores["spOccupancy"] <- scores["spOccupancy"] + 5; reasons$spOccupancy <- c(reasons$spOccupancy, "temporal / multi-season occupancy") }
     if (structure == "single response type") { scores["Hmsc"] <- scores["Hmsc"] + 1; scores["Hmsc-HPC"] <- scores["Hmsc-HPC"] + 2; scores["jSDM"] <- scores["jSDM"] + 1; scores["sjSDM"] <- scores["sjSDM"] + 2; scores["boral"] <- scores["boral"] + 2; reasons[["Hmsc-HPC"]] <- c(reasons[["Hmsc-HPC"]], "single-family Python-native HMSC"); reasons$jSDM <- c(reasons$jSDM, "single response type is easier for jSDM"); reasons$sjSDM <- c(reasons$sjSDM, "single-family response matrix"); reasons$boral <- c(reasons$boral, "ordination/regression with one family") }
-    if (occupancy_question) { scores["spOccupancy"] <- scores["spOccupancy"] + 6; reasons$spOccupancy <- c(reasons$spOccupancy, "imperfect detection / occupancy question") }
+    if (occupancy_question) {
+      scores["spOccupancy"] <- scores["spOccupancy"] + 8
+      scores[setdiff(names(scores), "spOccupancy")] <- scores[setdiff(names(scores), "spOccupancy")] - 3
+      reasons$spOccupancy <- c(reasons$spOccupancy, "imperfect detection / occupancy question")
+      reasons$Hmsc <- c(reasons$Hmsc, "not an imperfect-detection occupancy engine; use only as complementary community model after deriving site-level responses")
+      reasons[["Hmsc-HPC"]] <- c(reasons[["Hmsc-HPC"]], "not an imperfect-detection occupancy engine; complementary only")
+      reasons$jSDM <- c(reasons$jSDM, "does not model replicated detection/non-detection observation error directly")
+      reasons$GJAM <- c(reasons$GJAM, "not designed as a replicated detection occupancy model")
+      reasons$sjSDM <- c(reasons$sjSDM, "fast community model, but no explicit detection submodel")
+      reasons$boral <- c(reasons$boral, "ordination/regression model, not a detection-process occupancy model")
+    }
+    if (!occupancy_question && !detection_structure) {
+      scores["spOccupancy"] <- scores["spOccupancy"] - 2
+      reasons$spOccupancy <- c(reasons$spOccupancy, "not primary unless the data are detection-nondetection occupancy surveys")
+    }
     if (grepl("eDNA|metabarcoding|metagenomic|big community|OTU", q, ignore.case=TRUE)) { scores["sjSDM"] <- scores["sjSDM"] + 6; reasons$sjSDM <- c(reasons$sjSDM, "eDNA / metabarcoding / big community data") }
     if (grepl("ordination|residual ordination|latent variable|unconstrained", q, ignore.case=TRUE)) { scores["boral"] <- scores["boral"] + 6; reasons$boral <- c(reasons$boral, "Bayesian ordination and latent-variable model") }
 
@@ -6321,7 +6736,7 @@ server <- function(input, output, session) {
       Value = c(input$project_name, input$question_template, input$project_n_sites, input$project_n_responses, input$project_n_predictors,
                 input$project_response_structure, input$project_has_traits, input$project_has_phylogeny, input$project_has_spatial, input$project_many_zeros, input$project_need_prediction),
       Meaning = c("Saved to each engine config", "Used for recommendation", "Guidance only; upload checks still verify real data", "Guidance only", "Guidance only",
-                  "Helps select GJAM/Hmsc/jSDM-family engines", "Suggests Hmsc, Hmsc-HPC and boral trait workflows", "Suggests Hmsc and Hmsc-HPC phylogeny paths", "Suggests spatial-capable engines, but spOccupancy only when the design is detection-nondetection occupancy", "Suggests GJAM and careful zero/family handling", "Affects recommended outputs; inverse prediction is GJAM-specific")
+                  "Helps select spOccupancy for replicated detection data, GJAM for mixed/composition data, and Hmsc/jSDM-family engines for single-family matrices", "Suggests Hmsc, Hmsc-HPC and boral trait workflows", "Suggests Hmsc and Hmsc-HPC phylogeny paths", "Suggests spatial-capable engines, but spOccupancy only when the design is detection-nondetection occupancy", "Suggests GJAM and careful zero/family handling", "Affects recommended outputs; inverse prediction is GJAM-specific")
     )
     datatable(dat, options=list(dom="tip", pageLength=12), rownames=FALSE)
   })
@@ -6337,7 +6752,17 @@ server <- function(input, output, session) {
   univ_last_json <- function() file.path(app_dir, "output", "universal_benchmark_last.json")
 
   univ_required_files <- function() {
-    univ_file_contract()$filename
+    c("Y_occurrence.csv", "Y_count.csv", "Y_normal.csv", "XData.csv", "traits.csv",
+      "studyDesign.csv", "coordinates.csv", "phylogeny.nwk", "phylo_cov.csv",
+      "newdata.csv", "newcoords.csv", "folds.csv", "trial.size.csv", "offset.csv",
+      "row.ids.csv", "ranef.ids.csv", "distmat.csv", "spOccupancy_y_detection.csv",
+      "occ.covs.csv", "det.covs.csv", file.path("truth", "latent_occurrence.csv"),
+      file.path("truth", "occurrence_probability.csv"),
+      file.path("truth", "true_environment_effects.csv"),
+      file.path("truth", "true_species_associations.csv"),
+      file.path("truth", "true_predictions.csv"),
+      file.path("truth", "data_generation_config.yml"),
+      file.path("truth", "data_generation_script.R"))
   }
 
   univ_validate_benchmark_dir <- function(dir) {
@@ -6423,17 +6848,6 @@ server <- function(input, output, session) {
                 choices = cases, selected = cases[[1]])
   })
 
-  output$univ_real_file_uploads <- renderUI({
-    contract <- univ_file_contract()
-    tagList(
-      div(class = "note",
-          tags$b("Recommended real-data input: "),
-          "upload these files one by one. The app will assemble them into a benchmark folder and check that every required file exists before any engine is run."),
-      div(class = "benchmark-upload-grid",
-          lapply(seq_len(nrow(contract)), function(i) univ_file_upload_card(contract[i, , drop = FALSE])))
-    )
-  })
-
   univ_preflight_df <- function() {
     pkgs <- c("shiny", "DT", "yaml", "jsonlite", "zip", "Hmsc", "coda", "ape", "jSDM",
               "gjam", "spOccupancy", "sjSDM", "reticulate", "torch", "boral", "rjags", "R2jags")
@@ -6514,54 +6928,6 @@ server <- function(input, output, session) {
     add_log("univ", "Using built-in benchmark case:", chk$root)
   })
 
-  observeEvent(input$univ_import_files, {
-    contract <- univ_file_contract()
-    missing <- character()
-    import_root <- file.path(app_dir, "input", "universal_benchmark_uploads", timestamp_id())
-    dir.create(import_root, recursive = TRUE, showWarnings = FALSE)
-
-    for (i in seq_len(nrow(contract))) {
-      row <- contract[i, , drop = FALSE]
-      upload <- input[[paste0("univ_file_", row$key)]]
-      if (is.null(upload) || is.null(upload$datapath) || !length(upload$datapath) || !file.exists(upload$datapath[[1]])) {
-        if (isTRUE(row$required)) missing <- c(missing, row$filename)
-        next
-      }
-      dest <- file.path(import_root, row$filename)
-      dir.create(dirname(dest), recursive = TRUE, showWarnings = FALSE)
-      ok <- file.copy(upload$datapath[[1]], dest, overwrite = TRUE)
-      if (!isTRUE(ok)) missing <- c(missing, paste0(row$filename, " (copy failed)"))
-    }
-
-    if (length(missing)) {
-      rv$univ$status <- "check_failed"
-      add_log("univ", "Real benchmark file import failed. Missing or failed files:", paste(missing, collapse = ", "))
-      showNotification(
-        paste("Please upload all required benchmark files. Missing examples:",
-              paste(utils::head(missing, 12), collapse = ", ")),
-        type = "error", duration = 12
-      )
-      return()
-    }
-
-    chk <- univ_validate_benchmark_dir(import_root)
-    if (!isTRUE(chk$ok)) {
-      rv$univ$status <- "check_failed"
-      add_log("univ", "Real benchmark file import failed validation:", paste(chk$missing, collapse = ", "))
-      showNotification(
-        paste("Uploaded files are incomplete after assembly:", paste(utils::head(chk$missing, 12), collapse = ", ")),
-        type = "error", duration = 12
-      )
-      return()
-    }
-
-    rv$univ$data_dir <- chk$root
-    rv$univ$data_source <- "upload_files"
-    rv$univ$status <- "Uploaded benchmark files imported"
-    updateRadioButtons(session, "univ_data_source", selected = "upload_files")
-    add_log("univ", "Imported real benchmark files one by one into:", chk$root)
-  })
-
   observeEvent(input$univ_import_zip, {
     if (is.null(input$univ_data_zip) || !file.exists(input$univ_data_zip$datapath)) {
       showNotification("Please upload a benchmark ZIP first.", type = "error")
@@ -6573,9 +6939,9 @@ server <- function(input, output, session) {
       utils::unzip(input$univ_data_zip$datapath, exdir = import_root)
       root <- univ_find_benchmark_root(import_root)
       rv$univ$data_dir <- root
-      rv$univ$data_source <- "upload_zip"
+      rv$univ$data_source <- "upload"
       rv$univ$status <- "Uploaded benchmark ZIP imported"
-      updateRadioButtons(session, "univ_data_source", selected = "upload_zip")
+      updateRadioButtons(session, "univ_data_source", selected = "upload")
       add_log("univ", "Imported benchmark ZIP:", input$univ_data_zip$name)
       add_log("univ", "Using uploaded benchmark input directory:", root)
       TRUE
@@ -6647,14 +7013,19 @@ server <- function(input, output, session) {
   })
 
   output$univ_required_files <- renderDT({
-    contract <- univ_file_contract()
     dat <- data.frame(
-      File = contract$filename,
-      Required = ifelse(contract$required, "Yes", "No"),
-      Role = contract$role,
-      Format = contract$format,
-      Used_by = contract$used_by,
-      Example = contract$example,
+      File = univ_required_files(),
+      Role = c(
+        "Presence/absence community matrix", "Count response matrix", "Continuous response matrix",
+        "Site environmental predictors", "Species traits", "Sampling design and grouping IDs",
+        "Site coordinates", "Newick phylogeny", "Phylogenetic/taxonomic covariance",
+        "Prediction covariates", "Prediction coordinates", "Cross-validation folds",
+        "Binomial trial sizes", "Offsets", "boral row effect IDs", "boral random-effect IDs",
+        "Distance matrix", "Replicated detection-nondetection table", "Occupancy covariates",
+        "Detection covariates", "Latent occurrence states", "Truth occurrence probabilities",
+        "Truth environment effects", "Truth species associations", "Truth predictions",
+        "Generation/config metadata", "Reproducible data-generation script"
+      ),
       stringsAsFactors = FALSE
     )
     datatable(dat, options = list(pageLength = 10, scrollX = TRUE), rownames = FALSE)
@@ -7237,19 +7608,20 @@ server <- function(input, output, session) {
     }
     real_jsdm_requested <- identical(engine, "jSDM") && isTRUE(cfg$outputs$real_fit %||% FALSE)
     if (!safe_require(pkg)) {
-      status$status <- "scaffold_only"
+      status$status <- "check_failed"
       status$warnings <- paste0(pkg, " package is not available. A diagnostic output scaffold was saved; no model fit was attempted.")
     } else if (is_hmsc && isTRUE(input$hmsc_real_fit %||% FALSE)) {
-      status$status <- "ready_for_real_fit"
+      status$status <- "model_defined"
       status$warnings <- character()
     } else if (real_jsdm_requested) {
-      status$status <- "ready_for_real_fit"
+      status$status <- "model_defined"
       status$warnings <- character()
     } else {
-      status$status <- "scaffold_only"
+      status$status <- "model_defined"
       status$warnings <- paste0(pkg, " package appears available, but this workflow is currently configured as scaffold-only unless a production adapter is connected.")
     }
 
+    status <- normalize_engine_status(status)
     write_engine_status(outdir, status)
 
     if (engine == "Hmsc") {
@@ -7359,6 +7731,7 @@ server <- function(input, output, session) {
         status$status <- fit_result$status
         status$warnings <- c(status$warnings, fit_result$warnings)
         status$errors <- c(status$errors, fit_result$errors)
+        status <- normalize_engine_status(status)
         write_engine_status(outdir, status)
         add_log("hmsc", "HMSC S1-S7 results workflow status:", fit_result$status)
       }
@@ -7456,6 +7829,7 @@ server <- function(input, output, session) {
       }
     }
 
+    status <- normalize_engine_status(status)
     if (!(engine == "Hmsc" && identical(status$status, "fitted")) &&
         !(engine == "jSDM" && isTRUE(cfg$outputs$real_fit %||% FALSE))) {
       write_standard_outputs(outdir, engine, status,
@@ -7464,13 +7838,20 @@ server <- function(input, output, session) {
       if (!is_hmsc) write_reproducible_stub(outdir, engine)
       if (!is_hmsc) write_engine_scaffold_outputs(outdir, engine, cfg, status, rv$jsdm$Y, rv$jsdm$X)
     }
+    ensure_output_contract(outdir, engine, status,
+                           Y = if (is_hmsc) rv$hmsc$Y else rv$jsdm$Y,
+                           X = if (is_hmsc) rv$hmsc$X else rv$jsdm$X)
     make_html_report(outdir, engine, cfg, paste(status$status, paste(status$warnings, collapse="; ")))
     if (identical(status$status, "fitted")) {
       writeLines("RUN COMPLETE", file.path(outdir, "RUN_COMPLETE.txt"))
     } else if (identical(status$status, "fit_failed")) {
       writeLines("RUN FAILED", file.path(outdir, "RUN_FAILED.txt"))
+    } else if (identical(status$status, "model_defined")) {
+      writeLines("MODEL DEFINED - NO FITTED POSTERIOR", file.path(outdir, "RUN_MODEL_DEFINED.txt"))
+    } else if (identical(status$status, "check_failed")) {
+      writeLines("CHECK FAILED - NO FIT WAS ATTEMPTED", file.path(outdir, "RUN_CHECK_FAILED.txt"))
     } else {
-      writeLines("SCAFFOLD COMPLETE - NO MODEL FIT", file.path(outdir, "RUN_SCAFFOLD_COMPLETE.txt"))
+      writeLines("FIT FAILED - UNRECOGNIZED TERMINAL STATUS", file.path(outdir, "RUN_FAILED.txt"))
     }
     zipfile <- if (is_hmsc || isTRUE(input$jsdm_out_zip)) make_zip(outdir) else NULL
 
@@ -7620,13 +8001,16 @@ server <- function(input, output, session) {
       newdata = rv$hmschpc$newdata,
       log_fun = function(txt) add_log("hmschpc", txt)
     )
+    status <- normalize_engine_status(status)
     rv$hmschpc$status <- status$status %||% "unknown"
     if (!file.exists(file.path(outdir, "standard", "run_summary.csv"))) {
       write_standard_outputs(outdir, "Hmsc-HPC", status, rv$hmschpc$Y, rv$hmschpc$X)
       write_engine_scaffold_outputs(outdir, "Hmsc-HPC", hmschpc_config(), status, rv$hmschpc$Y, rv$hmschpc$X)
     }
+    ensure_output_contract(outdir, "Hmsc-HPC", status, rv$hmschpc$Y, rv$hmschpc$X)
     if (identical(rv$hmschpc$status, "fitted")) writeLines("RUN COMPLETE", file.path(outdir, "RUN_COMPLETE.txt"))
     if (identical(rv$hmschpc$status, "model_defined")) writeLines("MODEL DEFINED - SAMPLER SKIPPED", file.path(outdir, "RUN_MODEL_DEFINED.txt"))
+    if (identical(rv$hmschpc$status, "check_failed")) writeLines("CHECK FAILED - NO FIT WAS ATTEMPTED", file.path(outdir, "RUN_CHECK_FAILED.txt"))
     if (identical(rv$hmschpc$status, "fit_failed")) writeLines("RUN FAILED", file.path(outdir, "RUN_FAILED.txt"))
     rv$hmschpc$zip <- if (isTRUE(input$hmschpc_out_zip)) make_zip(outdir) else NULL
     add_log("hmschpc", "Hmsc-HPC workflow status:", rv$hmschpc$status, outdir)
@@ -7889,14 +8273,15 @@ server <- function(input, output, session) {
       status$warnings <- c(status$warnings, "GJAM warning: holdoutN must be smaller than the number of rows in Y.")
     }
     if (!safe_require("gjam")) {
-      status$status <- "scaffold_only"
+      status$status <- "check_failed"
       status$warnings <- c(status$warnings, "gjam package is not available. A diagnostic output scaffold was saved; no model fit was attempted.")
     } else if (isTRUE(cfg$outputs$real_fit %||% FALSE)) {
-      status$status <- "ready_for_real_fit"
+      status$status <- "model_defined"
     } else {
-      status$status <- "scaffold_only"
+      status$status <- "model_defined"
       status$warnings <- c(status$warnings, "gjam package appears available, but production GJAM fitting is not connected in this build.")
     }
+    status <- normalize_engine_status(status)
 
     gjam_files <- data.frame(
       Section = c("Configuration", "Inputs", "Model object", "Chains", "Parameters", "Fit diagnostics", "Prediction", "Sensitivity", "Ordination", "Missing data", "Plots", "Diagnostics", "Report"),
@@ -7994,6 +8379,7 @@ server <- function(input, output, session) {
       }
     }
 
+    status <- normalize_engine_status(status)
     if (!isTRUE(cfg$outputs$real_fit %||% FALSE)) {
       write_engine_status(outdir, status)
       write_standard_outputs(outdir, "GJAM", status, rv$gjam$Y, rv$gjam$X)
@@ -8001,13 +8387,18 @@ server <- function(input, output, session) {
       write_engine_scaffold_outputs(outdir, "GJAM", cfg, status, rv$gjam$Y, rv$gjam$X)
     }
 
+    ensure_output_contract(outdir, "GJAM", status, rv$gjam$Y, rv$gjam$X)
     make_html_report(outdir, "GJAM", cfg, paste(status$status, paste(status$warnings, collapse="; ")))
     if (identical(status$status, "fitted")) {
       writeLines("RUN COMPLETE", file.path(outdir, "RUN_COMPLETE.txt"))
     } else if (identical(status$status, "fit_failed")) {
       writeLines("RUN FAILED", file.path(outdir, "RUN_FAILED.txt"))
+    } else if (identical(status$status, "model_defined")) {
+      writeLines("MODEL DEFINED - NO FITTED POSTERIOR", file.path(outdir, "RUN_MODEL_DEFINED.txt"))
+    } else if (identical(status$status, "check_failed")) {
+      writeLines("CHECK FAILED - NO FIT WAS ATTEMPTED", file.path(outdir, "RUN_CHECK_FAILED.txt"))
     } else {
-      writeLines("SCAFFOLD COMPLETE - NO MODEL FIT", file.path(outdir, "RUN_SCAFFOLD_COMPLETE.txt"))
+      writeLines("FIT FAILED - UNRECOGNIZED TERMINAL STATUS", file.path(outdir, "RUN_FAILED.txt"))
     }
     rv$gjam$zip <- if (isTRUE(input$gjam_out_zip)) make_zip(outdir) else NULL
     rv$gjam$status <- status$status
@@ -8225,14 +8616,15 @@ server <- function(input, output, session) {
       status$warnings <- c(status$warnings, "spOccupancy warning: selected spatial model requires coords.csv.")
     }
     if (!safe_require("spOccupancy")) {
-      status$status <- "scaffold_only"
+      status$status <- "check_failed"
       status$warnings <- c(status$warnings, "spOccupancy package is not available. A diagnostic output scaffold was saved; no model fit was attempted.")
     } else if (isTRUE(cfg$validation_prediction_outputs$real_fit %||% FALSE)) {
-      status$status <- "ready_for_real_fit"
+      status$status <- "model_defined"
     } else {
-      status$status <- "scaffold_only"
+      status$status <- "model_defined"
       status$warnings <- c(status$warnings, "spOccupancy package appears available, but real fitting is disabled for this run.")
     }
+    status <- normalize_engine_status(status)
 
     spocc_files <- data.frame(
       Section = c("Configuration", "Inputs", "Model object", "Posterior samples", "Summary tables", "Fitted values", "Prediction", "Model assessment", "Spatial outputs", "Diagnostics", "Report"),
@@ -8326,6 +8718,7 @@ server <- function(input, output, session) {
       }
     }
 
+    status <- normalize_engine_status(status)
     if (!isTRUE(cfg$validation_prediction_outputs$real_fit %||% FALSE)) {
       write_engine_status(outdir, status)
       write_standard_outputs(outdir, "spOccupancy", status, rv$spocc$y, rv$spocc$occ)
@@ -8333,13 +8726,18 @@ server <- function(input, output, session) {
       write_engine_scaffold_outputs(outdir, "spOccupancy", cfg, status, rv$spocc$y, rv$spocc$occ)
     }
 
+    ensure_output_contract(outdir, "spOccupancy", status, rv$spocc$y, rv$spocc$occ)
     make_html_report(outdir, "spOccupancy", cfg, paste(status$status, paste(status$warnings, collapse="; ")))
     if (identical(status$status, "fitted")) {
       writeLines("RUN COMPLETE", file.path(outdir, "RUN_COMPLETE.txt"))
     } else if (identical(status$status, "fit_failed")) {
       writeLines("RUN FAILED", file.path(outdir, "RUN_FAILED.txt"))
+    } else if (identical(status$status, "model_defined")) {
+      writeLines("MODEL DEFINED - NO FITTED POSTERIOR", file.path(outdir, "RUN_MODEL_DEFINED.txt"))
+    } else if (identical(status$status, "check_failed")) {
+      writeLines("CHECK FAILED - NO FIT WAS ATTEMPTED", file.path(outdir, "RUN_CHECK_FAILED.txt"))
     } else {
-      writeLines("SCAFFOLD COMPLETE - NO MODEL FIT", file.path(outdir, "RUN_SCAFFOLD_COMPLETE.txt"))
+      writeLines("FIT FAILED - UNRECOGNIZED TERMINAL STATUS", file.path(outdir, "RUN_FAILED.txt"))
     }
     rv$spocc$zip <- if (isTRUE(input$spocc_out_zip)) make_zip(outdir) else NULL
     rv$spocc$status <- status$status
@@ -8461,15 +8859,16 @@ server <- function(input, output, session) {
     if (cfg$regularization_biotic$tune_regularization && cfg$regularization_biotic$cv_k < 2) status$warnings <- c(status$warnings, "sjSDM warning: regularization tuning needs CV folds >= 2.")
     real_sjsdm_fit <- isTRUE(input$sjsdm_real_fit)
     if (!safe_require("sjSDM")) {
-      status$status <- "scaffold_only"
+      status$status <- "check_failed"
       status$warnings <- c(status$warnings, "sjSDM package is not available. A diagnostic output scaffold was saved; no model fit was attempted.")
     } else if (isTRUE(real_sjsdm_fit)) {
-      status$status <- "ready_for_real_fit"
+      status$status <- "model_defined"
       status$warnings <- c(status$warnings, "sjSDM package is available. The GUI will run reproducible_script/run_this_sjSDM_analysis.R for real fitting.")
     } else {
-      status$status <- "scaffold_only"
+      status$status <- "model_defined"
       status$warnings <- c(status$warnings, "sjSDM package is available, but real fitting was disabled by the user. A reproducible scaffold and executable script were saved.")
     }
+    status <- normalize_engine_status(status)
     sjsdm_files <- data.frame(Section=c("Configuration","Inputs","Model object","Coefficients","Associations","Standard errors","Predictions","R-squared","ANOVA / variation partitioning","Internal structure","Importance","Weights","Residuals","Plots","Diagnostics","Report"), Expected_file_or_folder=c("used_config.yml","inputs/Y.csv, env.csv, spatial.csv, traits.csv, newdata.csv","models/sjSDM_model.rds","tables/coef_environment.csv, coef_spatial.csv","tables/covariance_matrix.csv, correlation_matrix.csv","tables/standard_errors.csv, p_values.csv","predictions/predictions.csv or results/predictions.rds","tables/Rsquared_total.csv, Rsquared_species.csv, Rsquared_sites.csv","anova/sjSDM_anova_results.csv, anova_species.csv, anova_sites.csv","internal_structure/internal_structure_species.csv, internal_structure_sites.csv, assembly_effects.csv","importance/importance_summary.csv","weights/env_weights.rds, spatial_weights.rds, model_weights.rds","tables/residuals.csv","plots/sjSDM_plot.pdf, anova_plot.pdf, importance_plot.pdf, internal_structure_plot.pdf, assembly_effects.pdf","diagnostics/engine_status.json, data_check_messages.csv, torch_diagnostic.txt","report/sjSDM_report.html"), Meaning=c("Exact sjSDM settings used for the run.","Copied response, environmental, spatial, trait, prediction and grouping inputs.","Serialized fitted sjSDM object when production fitting is connected.","Environmental and spatial coefficient matrices from coef.sjSDM.","Species covariance/correlation matrices from getCov/getCor.","Post-hoc standard errors and p-values from getSe or se=TRUE workflows.","Predicted responses from predict.sjSDM.","Total, species-level and site-level R-squared / pseudo-R2 outputs.","Variation partitioning into environment, space and associations using anova.sjSDM.","Internal metacommunity structure and assembly-effect summaries.","Predictor importance from getImportance / importance.","DNN/model weights from getWeights for reproducibility.","Residual diagnostics from residuals.sjSDM.","Human-readable figures for model, ANOVA, importance and internal structure.","Machine-readable status, warnings and PyTorch/reticulate diagnostics.","HTML report for browser viewing."))
     write.csv(sjsdm_files, file.path(outdir,"tables","sjSDM_result_workflow_map.csv"), row.names=FALSE)
     sjsdm_api_map <- data.frame(
@@ -8486,7 +8885,13 @@ server <- function(input, output, session) {
     write_engine_scaffold_outputs(outdir, "sjSDM", cfg, status, rv$sjsdm$Y, rv$sjsdm$env)
     writeLines(c("sjSDM result workflow","=====================","This SAFE build creates the output scaffold and configuration.","When the production sjSDM adapter is connected, it should write the files listed in tables/sjSDM_result_workflow_map.csv.","",paste(sjsdm_files$Section, sjsdm_files$Expected_file_or_folder, sep=" -> ")), file.path(outdir,"results","README_sjSDM_results.txt"))
     make_html_report(outdir, "sjSDM", cfg, paste(status$status, paste(status$warnings, collapse="; ")))
-    writeLines("SCAFFOLD COMPLETE - NO MODEL FIT", file.path(outdir,"RUN_SCAFFOLD_COMPLETE.txt"))
+    if (identical(status$status, "model_defined")) {
+      writeLines("MODEL DEFINED - NO FITTED POSTERIOR", file.path(outdir, "RUN_MODEL_DEFINED.txt"))
+    } else if (identical(status$status, "check_failed")) {
+      writeLines("CHECK FAILED - NO FIT WAS ATTEMPTED", file.path(outdir, "RUN_CHECK_FAILED.txt"))
+    } else if (identical(status$status, "fit_failed")) {
+      writeLines("RUN FAILED", file.path(outdir, "RUN_FAILED.txt"))
+    }
     if (isTRUE(real_sjsdm_fit) && safe_require("sjSDM")) {
       script_file <- file.path(outdir, "reproducible_script", "run_this_sjSDM_analysis.R")
       rscript <- file.path(R.home("bin"), if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript")
@@ -8515,7 +8920,7 @@ server <- function(input, output, session) {
         if (identical(as.integer(exit_status), 0L) && file.exists(file.path(outdir, "models", "sjSDM_model.rds")) && identical(script_status, "fitted")) {
           status$status <- "fitted"
           status$warnings <- c(status$warnings, paste("Real sjSDM fit completed. See diagnostics/sjSDM_real_fit_stdout_stderr.txt."))
-          if (file.exists(file.path(outdir, "RUN_SCAFFOLD_COMPLETE.txt"))) unlink(file.path(outdir, "RUN_SCAFFOLD_COMPLETE.txt"))
+          if (file.exists(file.path(outdir, "RUN_MODEL_DEFINED.txt"))) unlink(file.path(outdir, "RUN_MODEL_DEFINED.txt"))
           writeLines("REAL FIT COMPLETE", file.path(outdir, "RUN_REAL_FIT_COMPLETE.txt"))
         } else {
           status$status <- "fit_failed"
@@ -8523,9 +8928,12 @@ server <- function(input, output, session) {
           writeLines("REAL FIT FAILED", file.path(outdir, "RUN_REAL_FIT_FAILED.txt"))
         }
       }
+      status <- normalize_engine_status(status)
       write_engine_status(outdir, status)
       make_html_report(outdir, "sjSDM", cfg, paste(status$status, paste(c(status$warnings, status$errors), collapse="; ")))
     }
+    status <- normalize_engine_status(status)
+    ensure_output_contract(outdir, "sjSDM", status, rv$sjsdm$Y, rv$sjsdm$env)
     rv$sjsdm$zip <- if (isTRUE(input$sjsdm_out_zip)) make_zip(outdir) else NULL
     rv$sjsdm$status <- status$status
     add_log("sjsdm", "sjSDM workflow status:", status$status, outdir)
@@ -8760,9 +9168,9 @@ server <- function(input, output, session) {
       status <- tryCatch(jsonlite::fromJSON(status_file, simplifyVector = FALSE), error = function(e) NULL)
     }
     if (is.null(status)) {
-      status <- list(engine="boral", status=if (identical(exit_code, 0L)) "unknown" else "fit_failed",
+      status <- list(engine="boral", status="fit_failed",
                      runtime_seconds=0, warnings=character(),
-                     errors=if (identical(exit_code, 0L)) character() else paste0("boral Rscript exited with status ", exit_code, " before writing engine_status.json."))
+                     errors=paste0("boral Rscript exited with status ", exit_code, " without writing diagnostics/engine_status.json."))
       write_engine_status(outdir, status)
       write_standard_outputs(outdir, "boral", status, rv$boral$Y, rv$boral$X)
       write_engine_scaffold_outputs(outdir, "boral", cfg, status, rv$boral$Y, rv$boral$X)
@@ -8772,6 +9180,9 @@ server <- function(input, output, session) {
       write_engine_status(outdir, status)
       write_standard_outputs(outdir, "boral", status, rv$boral$Y, rv$boral$X)
     }
+    status <- normalize_engine_status(status)
+    write_engine_status(outdir, status)
+    ensure_output_contract(outdir, "boral", status, rv$boral$Y, rv$boral$X)
     writeLines(c(
       "boral result workflow",
       "=====================",
@@ -8779,6 +9190,15 @@ server <- function(input, output, session) {
       "This folder contains copied inputs, the exact used_config.yml, executable reproducible_script/run_this_boral_analysis.R, diagnostics, standard comparison tables and any boral outputs created by the run.",
       "If status is fit_failed, start with diagnostics/boral_dependency_error.txt, diagnostics/boral_fit_error.txt, diagnostics/JAGS_status.txt and diagnostics/engine_status.json."
     ), file.path(outdir, "results", "README_boral_results.txt"))
+    if (identical(status$status, "fitted")) {
+      writeLines("RUN COMPLETE", file.path(outdir, "RUN_COMPLETE.txt"))
+    } else if (identical(status$status, "model_defined")) {
+      writeLines("MODEL DEFINED - NO FITTED POSTERIOR", file.path(outdir, "RUN_MODEL_DEFINED.txt"))
+    } else if (identical(status$status, "check_failed")) {
+      writeLines("CHECK FAILED - NO FIT WAS ATTEMPTED", file.path(outdir, "RUN_CHECK_FAILED.txt"))
+    } else {
+      writeLines("RUN FAILED", file.path(outdir, "RUN_FAILED.txt"))
+    }
     rv$boral$zip <- if (isTRUE(input$boral_out_zip)) make_zip(outdir) else NULL
     rv$boral$status <- status$status
     add_log("boral", "boral workflow status:", status$status, outdir)
@@ -8863,6 +9283,9 @@ server <- function(input, output, session) {
         path <- file.path(dir, subdir)
         if (isTRUE(exists) && dir.exists(path)) length(list.files(path)) else 0
       }
+      if (isTRUE(exists) && base::exists("ensure_output_contract", mode = "function")) {
+        ensure_output_contract(dir, engine)
+      }
       status_file <- file.path(dir, "diagnostics", "engine_status.json")
       config_file <- file.path(dir, "used_config.yml")
       standard_run_file <- file.path(dir, "standard", "run_summary.csv")
@@ -8871,6 +9294,9 @@ server <- function(input, output, session) {
       standard_predictions_file <- file.path(dir, "standard", "predictions_long.csv")
       standard_associations_file <- file.path(dir, "standard", "associations_long.csv")
       standard_diagnostics_file <- file.path(dir, "standard", "diagnostics_long.csv")
+      standard_effects_species_file <- file.path(dir, "standard", "effects_species_environment.csv")
+      standard_predictions_site_file <- file.path(dir, "standard", "predictions_site_species.csv")
+      standard_associations_species_file <- file.path(dir, "standard", "associations_species_species.csv")
       standard_manifest_file <- file.path(dir, "standard", "output_manifest.csv")
       map_file <- switch(engine,
         Hmsc = file.path(dir, "tables", "Hmsc_result_workflow_map.csv"),
@@ -8907,6 +9333,11 @@ server <- function(input, output, session) {
         raw <- tryCatch(jsonlite::fromJSON(status_file), error = function(e) NULL)
         if (!is.null(raw$status)) status_text <- raw$status
       }
+      status_text <- as.character(status_text[1])
+      status_text_raw <- status_text
+      status_norm <- normalize_engine_status(list(engine = engine, status = status_text,
+                                                  warnings = character(), errors = character()))
+      status_text <- status_norm$status
       status_class <- if (identical(status_text, "fitted")) {
         "fitted_result"
       } else if (identical(status_text, "model_defined")) {
@@ -8929,6 +9360,9 @@ server <- function(input, output, session) {
         safe_file(standard_predictions_file),
         safe_file(standard_associations_file),
         safe_file(standard_diagnostics_file),
+        safe_file(standard_effects_species_file),
+        safe_file(standard_predictions_site_file),
+        safe_file(standard_associations_species_file),
         safe_file(standard_manifest_file)
       ))
       data_check_file <- file.path(dir, "diagnostics", "data_check_messages.csv")
@@ -8969,16 +9403,82 @@ server <- function(input, output, session) {
       } else {
         ""
       }
+      fitted_status <- identical(status_text, "fitted")
+      effects_direction_allowed <- fitted_status && safe_file(standard_effects_file)
+      prediction_comparison_allowed <- fitted_status && safe_file(standard_predictions_file) && safe_file(standard_fit_file)
+      association_pattern_allowed <- fitted_status && safe_file(standard_associations_file)
+      association_numeric_allowed <- FALSE
+      effects_note <- if (effects_direction_allowed) {
+        "Cautious comparison of predictor-species direction/sign is possible only after matching predictor names, scaling, link function and response family."
+      } else if (identical(status_text, "model_defined")) {
+        "No fitted effect estimates; model boundary can be reviewed but effect direction cannot be compared."
+      } else {
+        "No fitted standard/effects_long.csv available for effect-direction comparison."
+      }
+      prediction_note <- if (prediction_comparison_allowed) {
+        "Prediction metrics can be compared only under the same held-out units, response scale, response family and metric definition."
+      } else if (identical(status_text, "model_defined")) {
+        "No fitted prediction evidence; compiled/model-defined outputs are not predictive-performance evidence."
+      } else {
+        "No fitted standard predictions and fit metrics available for prediction comparison."
+      }
+      association_numeric_note <- paste(
+        "Not directly comparable numerically across engines:",
+        "Hmsc Omega, Hmsc-HPC Eta/Lambda, jSDM residual correlations, GJAM corMu/sigMu, spOccupancy latent/random effects, sjSDM covariance/correlation and boral residual correlations use different statistical objects."
+      )
+      association_pattern_note <- if (association_pattern_allowed) {
+        paste(association_note, "Broad sign/rank/pattern review is possible after documenting association_type, scale and response family.")
+      } else {
+        "No fitted standard/associations_long.csv available; compare diagnostics only."
+      }
+      collapse_nonempty <- function(x) paste(x[nzchar(x)], collapse = "; ")
+      comparable_outputs <- collapse_nonempty(c(
+        "status and output-contract completeness",
+        if (safe_file(config_file)) "used_config.yml settings" else "",
+        if (safe_file(standard_manifest_file)) "output manifest and file counts" else "",
+        if (prediction_comparison_allowed) "prediction metrics under matched validation/scale" else "",
+        if (effects_direction_allowed) "predictor-species effect direction with link/scale caveats" else "",
+        if (association_pattern_allowed) "association patterns qualitatively" else ""
+      ))
+      non_comparable_outputs <- collapse_nonempty(c(
+        if (!fitted_status) "performance/effects are not comparable because status is not fitted" else "",
+        "raw coefficients without checking scaling/link/family",
+        "raw residual association parameters across engines",
+        "WAIC/DIC/AUC/RMSE-like values across mismatched response scales or validation units",
+        if (identical(engine, "spOccupancy")) "detection effects versus occurrence/environment effects" else "",
+        if (identical(engine, "GJAM")) "GJAM observation-scale typeNames outputs versus link-scale JSDM coefficients" else ""
+      ))
+      primary_diagnostics <- if (!exists) {
+        "Folder does not exist"
+      } else if (identical(status_text, "check_failed")) {
+        "diagnostics/data_check_messages.csv; used_config.yml; diagnostics/session_info.txt"
+      } else if (identical(status_text, "fit_failed")) {
+        paste(c("diagnostics/engine_status.json", "diagnostics/session_info.txt", paste0("diagnostics/", head(error_files, 3))), collapse = "; ")
+      } else {
+        "diagnostics/engine_status.json; standard/run_summary.csv; standard/output_manifest.csv; diagnostics/session_info.txt"
+      }
       data.frame(
         Engine = engine,
         Folder = folder,
         Exists = exists,
         Engine_status = status_text,
+        Engine_status_raw = status_text_raw,
         Status_class = status_class,
         Fitted_for_metric_comparison = metric_allowed,
         Metric_comparison_allowed = metric_allowed,
         Metric_comparison_note = metric_note,
+        Effects_direction_comparison_allowed = effects_direction_allowed,
+        Effects_direction_comparison_note = effects_note,
+        Prediction_comparison_allowed = prediction_comparison_allowed,
+        Prediction_comparison_note = prediction_note,
+        Association_numeric_comparison_allowed = association_numeric_allowed,
+        Association_pattern_comparison_allowed = association_pattern_allowed,
         Association_comparison_note = association_note,
+        Association_pattern_note = association_pattern_note,
+        Association_numeric_note = association_numeric_note,
+        Comparable_outputs = comparable_outputs,
+        Non_comparable_outputs = non_comparable_outputs,
+        Primary_diagnostics = primary_diagnostics,
         Failure_diagnostic_file = failure_diag,
         Standard_contract_complete = standard_complete,
         Status_file = safe_file(status_file),
@@ -8991,6 +9491,9 @@ server <- function(input, output, session) {
         Standard_predictions = safe_file(standard_predictions_file),
         Standard_associations = safe_file(standard_associations_file),
         Standard_diagnostics = safe_file(standard_diagnostics_file),
+        Standard_effects_species_environment = safe_file(standard_effects_species_file),
+        Standard_predictions_site_species = safe_file(standard_predictions_site_file),
+        Standard_associations_species_species = safe_file(standard_associations_species_file),
         Output_manifest = safe_file(standard_manifest_file),
         Workflow_map = safe_file(map_file),
         Workflow_step_index = safe_file(workflow_index_file),
@@ -9052,6 +9555,54 @@ server <- function(input, output, session) {
         stringsAsFactors = FALSE
       ),
       data.frame(
+        Output_or_concept = "Status interpretation",
+        Hmsc = "fitted means posterior/model outputs exist; convergence still requires review",
+        `Hmsc-HPC` = "model_defined is allowed for compile-only boundaries; fitted requires posterior output",
+        jSDM = "fitted requires posterior/model object; model_defined is not performance evidence",
+        GJAM = "fitted requires GJAM object and standard tables; typeNames define scale",
+        spOccupancy = "fitted requires occupancy model output; detection and occurrence effects stay separate",
+        sjSDM = "fitted requires PyTorch model output and standard summaries",
+        boral = "fitted requires JAGS/boral model output and diagnostics",
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      ),
+      data.frame(
+        Output_or_concept = "Directly comparable across engines",
+        Hmsc = "status, output contract, ZIP, diagnostics, scripts",
+        `Hmsc-HPC` = "status, output contract, ZIP, diagnostics, scripts",
+        jSDM = "status, output contract, ZIP, diagnostics, scripts",
+        GJAM = "status, output contract, ZIP, diagnostics, scripts",
+        spOccupancy = "status, output contract, ZIP, diagnostics, scripts",
+        sjSDM = "status, output contract, ZIP, diagnostics, scripts",
+        boral = "status, output contract, ZIP, diagnostics, scripts",
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      ),
+      data.frame(
+        Output_or_concept = "Conditionally comparable",
+        Hmsc = "prediction metrics, effect directions and association patterns only after scale/design checks",
+        `Hmsc-HPC` = "prediction metrics, effect directions and association patterns only after scale/design checks",
+        jSDM = "prediction metrics, effect directions and association patterns only after scale/design checks",
+        GJAM = "prediction metrics and effects only after observation-scale/typeNames checks",
+        spOccupancy = "prediction metrics only among comparable occupancy/detection designs",
+        sjSDM = "prediction metrics, effect directions and association patterns only after scale/design checks",
+        boral = "prediction metrics, effect directions and association patterns only after scale/design checks",
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      ),
+      data.frame(
+        Output_or_concept = "Not directly comparable",
+        Hmsc = "Omega as a raw numeric equivalent to other association objects",
+        `Hmsc-HPC` = "Eta/Lambda as a raw numeric equivalent to Hmsc Omega",
+        jSDM = "latent residual correlations as raw equivalents to Omega or boral residual correlations",
+        GJAM = "corMu/sigMu as raw equivalents to link-scale JSDM correlations",
+        spOccupancy = "detection effects or latent factors as generic species association parameters",
+        sjSDM = "bioticStruct covariance/correlation as raw equivalents to MCMC latent covariances",
+        boral = "latent-variable residual correlations as raw equivalents to Hmsc Omega",
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      ),
+      data.frame(
         Output_or_concept = "Developer output contract",
         Hmsc = "standard tables + S1-S7 R scripts + diagnostics",
         `Hmsc-HPC` = "standard tables + S1-S7 pyhmsc scripts + HDF5 posterior",
@@ -9101,13 +9652,33 @@ server <- function(input, output, session) {
       "model_defined is useful for reproducibility and model-boundary review, but it is not a fitted posterior model.",
       "check_failed means inputs/settings failed before fitting; fit_failed means fitting or post-processing failed after the run started.",
       "check_failed and fit_failed folders are useful diagnostic artifacts, not successful analyses.",
-      "Useful comparisons: output completeness, model status, runtime, prediction metrics if generated with the same validation design and response scale, response direction, sensitivity workflows, and broad association/correlation patterns.",
+      "Useful direct comparisons: output completeness, ZIP existence, model status, runtime as practical cost, script/report presence and diagnostic file presence.",
+      "Useful conditional comparisons: prediction metrics if generated with the same validation design and response scale, effect-direction agreement after link/scale/family checks, and broad association/correlation patterns with association_type and scale documented.",
+      "Do not compare detection effects with occurrence/environment effects; spOccupancy detection rows answer a different ecological question.",
+      "Do not compare GJAM observation-scale effects with link-scale JSDM coefficients unless the scale conversion and typeNames interpretation are explicit.",
       "Do not assume raw parameters are identical.",
       "Do not compare WAIC/DIC/AUC/RMSE-like values unless they target the same response scale, validation units and fitted status.",
       "Do not directly equate Hmsc Omega, Hmsc-HPC Eta/Lambda draws, jSDM residual correlations, GJAM corMu/sigMu, spOccupancy latent-factor residual associations, sjSDM covariance/correlation matrices and boral residual correlations.",
       sep="\n"
     )
   })
+
+  output$parameter_dictionary_table <- renderDT({
+    dat <- parameter_dictionary_data()
+    datatable(
+      dat,
+      rownames = FALSE,
+      filter = "top",
+      options = list(pageLength = 15, scrollX = TRUE, autoWidth = TRUE)
+    )
+  })
+
+  output$parameter_dictionary_download <- downloadHandler(
+    filename = function() paste0("JSDMStudio_parameter_dictionary_", timestamp_id(), ".csv"),
+    content = function(file) {
+      write.csv(parameter_dictionary_data(), file, row.names = FALSE, fileEncoding = "UTF-8")
+    }
+  )
 
   output$compare_download <- downloadHandler(
     filename = function() paste0("JSDMStudio_model_comparison_", timestamp_id(), ".csv"),

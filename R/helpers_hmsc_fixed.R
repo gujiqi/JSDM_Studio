@@ -1,7 +1,7 @@
 # R/helpers.R
-# JSDM Studio rich-output helper functions
-# thisfileisbackend: Readnumberdata, modelling, fit, diagnostics, outputfigures, Save results.
-# usersusually not neededneed tomodifythisfile.
+# JSDM Studio rich-output helper functions.
+# Backend utilities for reading data, fitting Hmsc models, saving diagnostics and exporting reports.
+# Ordinary users usually do not need to modify this file.
 
 `%||%` <- function(a, b) {
   if (is.null(a) || length(a) == 0 || (length(a) == 1 && is.na(a))) b else a
@@ -18,13 +18,13 @@ safe_read_csv <- function(path, label = "file") {
 
 safe_try <- function(expr, label = "step", log_fun = function(x) message(x)) {
   tryCatch(expr, error = function(e) {
-    log_fun(paste0(" ", label, "Failed: ", e$message))
+    log_fun(paste0(label, " failed: ", e$message))
     NULL
   })
 }
 
 read_uploaded_csv <- function(file_input, label = "file") {
-  if (is.null(file_input)) stop(sprintf("PleaseUpload %s.", label), call. = FALSE)
+  if (is.null(file_input)) stop(sprintf("Please upload %s before running this workflow.", label), call. = FALSE)
   read.csv(file_input$datapath, row.names = 1, check.names = FALSE, stringsAsFactors = TRUE)
 }
 
@@ -57,29 +57,29 @@ validate_hmsc_inputs <- function(Y, XData, TrData = NULL, studyDesign = NULL, co
   messages <- character()
   if (!is.matrix(Y)) Y <- as.matrix(Y)
   suppressWarnings(storage.mode(Y) <- "numeric")
-  if (!is.numeric(Y)) stop("Y speciesmatrixmustisvaluemodel: presence/absenceuse 0/1, countsuse completenumber, continuousnumberdatausevalue.", call. = FALSE)
-  if (nrow(Y) != nrow(XData)) stop("Y and XData ofrowsnumberdifferent.Y ofeachrowsmustcorresponding XData ofsamerowssampling units.", call. = FALSE)
+  if (!is.numeric(Y)) stop("Y.csv must be a numeric response matrix. Use 0/1 for presence-absence, non-negative integers for counts, or numeric continuous values for normal-response workflows.", call. = FALSE)
+  if (nrow(Y) != nrow(XData)) stop("Y.csv and XData.csv must have the same number of rows; each row must represent the same sampling unit in the same order.", call. = FALSE)
   if (!is.null(rownames(Y)) && !is.null(rownames(XData)) && !all(rownames(Y) == rownames(XData))) {
-    stop("Y and XData ofrow namenotexactly, ororderdifferent.Pleasemake twotableoffirstcolumnssampling unitsnames match.", call. = FALSE)
+    stop("Y.csv and XData.csv row names do not match. Align sampling-unit names or remove inconsistent row names before fitting.", call. = FALSE)
   }
-  if (anyNA(Y)) stop("Y speciesmatrixinhasmissing values NA.Pleasefirstprocessingmissing values.", call. = FALSE)
-  if (anyNA(XData)) messages <- c(messages, "tip: XData inhas NA.Hmsc mayunable toRun, Pleaseconfirmiswhether neededneed todeleteorimputemissing values.")
+  if (anyNA(Y)) stop("Y.csv contains missing values (NA). Handle missing responses before fitting this Hmsc workflow.", call. = FALSE)
+  if (anyNA(XData)) messages <- c(messages, "XData.csv contains NA values. Hmsc fitting may fail unless missing predictors are removed or imputed.")
 
   if (!is.null(TrData)) {
     if (!all(colnames(Y) %in% rownames(TrData))) {
       missing_sp <- setdiff(colnames(Y), rownames(TrData))
-      stop(paste0("traits/TrData missing thesespecies: ", paste(missing_sp, collapse = ", ")), call. = FALSE)
+      stop(paste0("traits/TrData.csv is missing species: ", paste(missing_sp, collapse = ", ")), call. = FALSE)
     }
-    messages <- c(messages, sprintf("traits Check: %s itemsspecies, %s itemstraits.", nrow(TrData), ncol(TrData)))
+    messages <- c(messages, sprintf("TrData check: %s species rows and %s trait columns.", nrow(TrData), ncol(TrData)))
   }
   if (!is.null(studyDesign)) {
-    if (nrow(studyDesign) != nrow(Y)) messages <- c(messages, "tip: studyDesign rowsnumberand Y different; Pleaseconfirmiswhether bysampling unitscorresponding.")
+    if (nrow(studyDesign) != nrow(Y)) messages <- c(messages, "studyDesign.csv row count does not match Y.csv; random-effect design must align with sampling units.")
   }
   if (!is.null(coordinates)) {
-    if (nrow(coordinates) != nrow(Y)) messages <- c(messages, "tip: coordinates rowsnumberand Y different; SpatialRandom effectsmayneedneed toCheck.")
+    if (nrow(coordinates) != nrow(Y)) messages <- c(messages, "coordinates.csv row count does not match Y.csv; spatial random effects require one coordinate row per sampling unit.")
   }
 
-  messages <- c(messages, sprintf("numberdataCheckthrough: %s itemssampling units, %s itemsspecies, %s itemsenvironmental variables.", nrow(Y), ncol(Y), ncol(XData)))
+  messages <- c(messages, sprintf("Data check passed: %s sampling units, %s species/responses and %s environmental predictors.", nrow(Y), ncol(Y), ncol(XData)))
   return(messages)
 }
 
@@ -258,7 +258,7 @@ plot_model_fit_compare <- function(MF, MFCV, outdir, model_name = "model") {
 }
 
 mcmc_diagnostics_rich <- function(m, outdir, cfg, log_fun) {
-  log_fun(" positiveinOutput MCMC convergence diagnostics: Beta / Gamma / Omega / Rho / Alpha(if availableOutput)...")
+  log_fun("Writing MCMC convergence diagnostics for Beta, Gamma, Omega, rho and alpha when available...")
   f <- file.path(outdir, "results", "MCMC_convergence.txt")
   mpost <- Hmsc::convertToCodaObject(m, spNamesNumbers = c(TRUE, FALSE), covNamesNumbers = c(TRUE, FALSE))
   capture_to_file({
@@ -311,7 +311,7 @@ mcmc_diagnostics_rich <- function(m, outdir, cfg, log_fun) {
 }
 
 parameter_estimates_rich <- function(m, outdir, cfg, log_fun) {
-  log_fun(" positiveinOutputparameter estimates: Beta / Gamma / variance partitioning / Omega species associations...")
+  log_fun("Writing parameter estimates: Beta, Gamma, variance partitioning and Omega species associations...")
   tbl_dir <- file.path(outdir, "tables")
   plot_dir <- file.path(outdir, "plots")
   result_txt <- file.path(outdir, "results", "parameter_estimates.txt")
@@ -408,7 +408,7 @@ parameter_estimates_rich <- function(m, outdir, cfg, log_fun) {
 }
 
 prediction_gradients_rich <- function(m, outdir, cfg, log_fun) {
-  log_fun(" positiveintryOutputenvironmental gradient predictionsfigures predictions.pdf...")
+  log_fun("Trying to write environmental gradient prediction figures to predictions.pdf...")
   covariates <- character()
   if (identical(as.character(m$XFormula), "~.")) {
     covariates <- colnames(m$XData)
@@ -463,16 +463,16 @@ make_html_report <- function(outdir, cfg) {
     "<style>body{font-family:Arial,'Microsoft YaHei',sans-serif;background:#f8fafc;color:#1f2937;margin:40px;}",
     ".card{background:white;border:1px solid #e5e7eb;border-radius:18px;padding:22px;margin:16px 0;box-shadow:0 10px 30px rgba(15,23,42,.08)}",
     "h1{color:#155e63}.pill{display:inline-block;background:#ccfbf1;color:#134e4a;padding:5px 10px;border-radius:999px;margin:3px}</style></head><body>",
-    "<h1> JSDM Studio minanalysisreport</h1>",
-    "<div class='card'><h2>Runinformation</h2>",
+    "<h1>JSDM Studio analysis report</h1>",
+    "<div class='card'><h2>Run information</h2>",
     "<span class='pill'>Hmsc</span><span class='pill'>Shiny GUI</span><span class='pill'>Reproducible workflow</span>",
-    "<p>thisreportby JSDM Studio automaticgenerate.completeparameterssee used_config.yml.</p></div>",
-    "<div class='card'><h2>mainneed toOutput files</h2><ul>", li, "</ul></div>",
-    "<div class='card'><h2>next stepRecommended</h2><ol>",
-    "<li>check MCMC_convergence.txt and MCMC_traceplots.pdf, confirm convergence.</li>",
-    "<li>check model_fit*.csv and model_fit_explanatory_vs_predictive.pdf.</li>",
-    "<li>check Beta_plot.pdf, Gamma_plot.pdf, variance_partitioning.pdf and Omega figures.</li>",
-    "<li>formal manuscriptminanalysisPleaseincrease samples/transient, andretain used_config.yml.</li>",
+    "<p>This report was generated automatically by JSDM Studio. Complete run settings are recorded in used_config.yml.</p></div>",
+    "<div class='card'><h2>Key output files</h2><ul>", li, "</ul></div>",
+    "<div class='card'><h2>Recommended next steps</h2><ol>",
+    "<li>Check MCMC_convergence.txt and MCMC_traceplots.pdf before interpreting posterior summaries.</li>",
+    "<li>Check model_fit*.csv and model_fit_explanatory_vs_predictive.pdf for response-scale fit.</li>",
+    "<li>Inspect Beta_plot.pdf, Gamma_plot.pdf, variance_partitioning.pdf and Omega figures when those outputs are available.</li>",
+    "<li>For manuscript-scale analysis, increase samples/transient/thin as needed and retain used_config.yml with the archived output ZIP.</li>",
     "</ol></div></body></html>"
   )
   writeLines(html, report, useBytes = TRUE)
@@ -485,15 +485,15 @@ fit_hmsc_workflow <- function(Y, XData, TrData = NULL, phyloTree = NULL, studyDe
   if (is.null(outdir)) outdir <- make_output_dir()
   dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
   set.seed(cfg$mcmc$seed %||% 123)
-  progress_fun(3, "ReadandCheck data", 1, "positiveincleaning Y, XData, traits etc.input.")
+  progress_fun(3, "Read and check data", 1, "Cleaning Y, XData, traits and optional design inputs.")
 
   Y <- as.matrix(Y)
   suppressWarnings(storage.mode(Y) <- "numeric")
   validate_hmsc_inputs(Y, XData, TrData, studyDesign, coordinates)
   save_input_summaries(Y, XData, TrData, studyDesign, coordinates, outdir)
-  progress_fun(8, "numberdataCheckCompleted", 1, "inputsummaryneed toalreadysaveto tables/.")
+  progress_fun(8, "Data check completed", 1, "Input summaries saved to tables/.")
 
-  log_fun(" positiveincreateRandom effectsstructure...")
+  log_fun("Creating random-effect structure...")
   rstuff <- build_random_levels(
     mode = cfg$random_effects$mode %||% "sample",
     Y = Y, studyDesign = studyDesign, coordinates = coordinates,
@@ -522,8 +522,8 @@ fit_hmsc_workflow <- function(Y, XData, TrData = NULL, phyloTree = NULL, studyDe
     args$phyloTree <- phyloTree
   }
 
-  progress_fun(12, "define Hmsc model", 2, "positiveinrootdata XFormula, Random effects, traits/phylogeny createmodel.")
-  log_fun(" positiveincreate Hmsc model object...")
+  progress_fun(12, "Define Hmsc model", 2, "Creating the Hmsc model from Y, XFormula, random effects, traits and phylogeny.")
+  log_fun("Creating Hmsc model object...")
   m <- do.call(Hmsc::Hmsc, args)
   model_structure_output(m, outdir)
 
@@ -532,8 +532,8 @@ fit_hmsc_workflow <- function(Y, XData, TrData = NULL, phyloTree = NULL, studyDe
   save(models, file = file.path(outdir, "models", "unfitted_models.RData"))
   saveRDS(m, file.path(outdir, "models", "unfitted_model.rds"))
 
-  progress_fun(20, "MCMC fit", 3, "positiveinenter sampleMcmc.thisStagemaymaximum; Hmsc during internal iterations, the interfacemaydoes not step throughsecRefresh.")
-  log_fun(" positiveinRun MCMC; this stepmayneedneed tolongerwhenbetween...")
+  progress_fun(20, "MCMC fit", 3, "Entering sampleMcmc. This is usually the longest step, and the interface may update only when Hmsc returns control.")
+  log_fun("Running MCMC; this step can take longer for larger datasets or longer chains...")
   samples <- cfg$mcmc$samples %||% 100
   thin <- cfg$mcmc$thin %||% 1
   nChains <- cfg$mcmc$nChains %||% 2
@@ -541,13 +541,13 @@ fit_hmsc_workflow <- function(Y, XData, TrData = NULL, phyloTree = NULL, studyDe
   nParallel <- cfg$mcmc$nParallel %||% 1
 
   total_iter <- transient + samples * thin
-  log_fun(paste0(" MCMC settings: eachchainstotal iterationsabout ", total_iter,
+  log_fun(paste0("MCMC settings: approximate iterations per chain = ", total_iter,
                  "; number of chains ", nChains,
                  "; thin=", thin,
                  "; samples=", samples,
                  "; transient=", transient,
                  "."))
-  log_fun(" Description: Hmsc of sampleMcmc positiveininternalRun, GUI can only update before or after this step; verbose informationwill be shown incontrolconsole.")
+  log_fun("Hmsc::sampleMcmc runs internally; GUI progress updates occur before and after the call, while verbose sampler output is written to the R console/log.")
 
   m <- Hmsc::sampleMcmc(
     m, samples = samples, transient = transient, thin = thin,
@@ -561,14 +561,14 @@ fit_hmsc_workflow <- function(Y, XData, TrData = NULL, phyloTree = NULL, studyDe
   save(models, file = file.path(outdir, "models", fitted_name))
   saveRDS(m, file.path(outdir, "models", "hmsc_model.rds"))
   if (isTRUE(cfg$outputs$save_model)) saveRDS(m, file.path(outdir, "hmsc_model.rds"))
-  progress_fun(45, "MCMC fitCompleted", 3, "modelalreadysave, Startgenerateprediction, fitanddiagnostics.")
+  progress_fun(45, "MCMC fit completed", 3, "Model saved; generating predictions, fit summaries and diagnostics.")
 
   results <- list(model = m)
 
   # Predictions and model fit
-  progress_fun(50, "predicted valuesandmodelfit", 4, "positiveincompute predicted values andexplanatory model fit.")
+  progress_fun(50, "Predicted values and model fit", 4, "Computing predicted values and explanatory model fit.")
   if (isTRUE(cfg$outputs$compute_predicted_values) || isTRUE(cfg$outputs$evaluate_model_fit)) {
-    log_fun(" positiveincomputeinterpretpropertyfit: computePredictedValues + evaluateModelFit...")
+    log_fun("Computing explanatory fit: computePredictedValues + evaluateModelFit...")
     predY <- Hmsc::computePredictedValues(m)
     saveRDS(predY, file.path(outdir, "results", "predicted_values.rds"))
     results$predY <- predY
@@ -586,9 +586,9 @@ fit_hmsc_workflow <- function(Y, XData, TrData = NULL, phyloTree = NULL, studyDe
     }
   }
 
-  progress_fun(62, "cross-validation/WAIC", 5, "Ifcheckedcross-validation, this stepwillrecomputeminareaprediction.")
+  progress_fun(62, "Cross-validation / WAIC", 5, "If cross-validation is enabled, this step recomputes held-out predictions.")
   if (isTRUE(cfg$outputs$compute_cv)) {
-    log_fun(" positiveincomputecross-validationpredictive performance: createPartition + computePredictedValues(partition=...)")
+    log_fun("Computing cross-validation predictive performance: createPartition + computePredictedValues(partition=...)")
     MFCV <- safe_try({
       partition <- Hmsc::createPartition(m, nfolds = cfg$outputs$nfolds %||% 2)
       cvpreds <- Hmsc::computePredictedValues(m, partition = partition, nParallel = nParallel)
@@ -608,7 +608,7 @@ fit_hmsc_workflow <- function(Y, XData, TrData = NULL, phyloTree = NULL, studyDe
   }
 
   if (isTRUE(cfg$outputs$compute_waic)) {
-    log_fun(" positiveintryCompute WAIC...")
+    log_fun("Computing WAIC when supported by the fitted object...")
     WAIC <- safe_try(Hmsc::computeWAIC(m), "WAIC", log_fun)
     if (!is.null(WAIC)) {
       saveRDS(WAIC, file.path(outdir, "results", "WAIC.rds"))
@@ -617,17 +617,17 @@ fit_hmsc_workflow <- function(Y, XData, TrData = NULL, phyloTree = NULL, studyDe
     results$WAIC <- WAIC
   }
 
-  progress_fun(72, "MCMC convergence diagnostics", 6, "positiveinOutput MCMC_convergence.txt and traceplots.")
+  progress_fun(72, "MCMC convergence diagnostics", 6, "Writing MCMC_convergence.txt and traceplots.")
   if (isTRUE(cfg$outputs$compute_diagnostics)) {
     safe_try(mcmc_diagnostics_rich(m, outdir, cfg, log_fun), "MCMC diagnostics", log_fun)
   }
 
-  progress_fun(80, "parameter estimates/variance partitioning/Omega", 7, "positiveinOutput Beta, Gamma, variance partitioningandspecies associations.")
+  progress_fun(80, "Parameter estimates / variance partitioning / Omega", 7, "Writing Beta, Gamma, variance partitioning and species association outputs.")
   if (isTRUE(cfg$outputs$compute_parameters)) {
     safe_try(parameter_estimates_rich(m, outdir, cfg, log_fun), "parameter estimates", log_fun)
   }
 
-  progress_fun(90, "environmental gradient predictions", 8, "positiveintrygenerate environmental gradient predictions.")
+  progress_fun(90, "Environmental gradient predictions", 8, "Trying to generate environmental gradient predictions.")
   if (isTRUE(cfg$outputs$make_predictions)) {
     safe_try(prediction_gradients_rich(m, outdir, cfg, log_fun), "environmental gradient predictions", log_fun)
   }
@@ -648,7 +648,7 @@ fit_hmsc_workflow <- function(Y, XData, TrData = NULL, phyloTree = NULL, studyDe
     }, "species associations RDS", log_fun)
   }
 
-  progress_fun(96, "generatereportand cleaningOutput", 9, "positiveinGenerate HTML reportandCompletedmark.")
+  progress_fun(96, "Generate report and finalize output", 9, "Generating the HTML report and writing completion markers.")
   if (isTRUE(cfg$outputs$make_report)) {
     safe_try(make_html_report(outdir, cfg), "HTML report", log_fun)
   }

@@ -26,9 +26,20 @@ This GitHub source package is the lightweight developer version. It keeps the ap
 - external package reference papers and archived source ZIPs
 - temporary logs and smoke-test files
 
-The complete local release ZIP is preserved separately as:
+The complete local release ZIP is preserved separately as a release artifact:
 
-`JSDMStudio_FINAL_COMPLETE_MAX_20260603_PER_FILE_UPLOAD_OK.zip`
+`JSDMStudio_FINAL_COMPLETE_MAX_20260818_MAXIMUM_UPLOAD_AUDIT_OK_v5.zip`
+
+Final maximum-upload validation was run on the upload-ready book chapter cases in
+`examples/00_UPLOAD_READY_book_chapter_cases`:
+
+- `ch06_plant_traits_whittaker`
+- `ch07_deadwood_fungi`
+- `ch11_finnish_birds`
+
+Across Hmsc, Hmsc-HPC, jSDM, GJAM, spOccupancy, sjSDM and boral, 78/78 branch
+runs reached `fitted` status with complete output contracts and real ZIP files.
+See `docs/AUDIT_REPORT_20260818_MAXIMUM_UPLOAD_BOOK_CASES.md`.
 
 ## Run Locally
 
@@ -47,13 +58,15 @@ shiny::runApp(".")
 
 ## Build Installer
 
-The GitHub source package does not include the compiled installer. To rebuild it locally:
+The GitHub source package does not track the compiled installer in Git history.
+To rebuild it locally:
 
 ```bat
 installer\build_installer.bat
 ```
 
 The generated installer will be written to `installer/output/`, which is ignored by Git.
+Prebuilt Windows installers should be attached to GitHub Releases instead.
 
 ## Output Policy
 

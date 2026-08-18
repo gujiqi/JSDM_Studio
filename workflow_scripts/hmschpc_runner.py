@@ -148,6 +148,16 @@ def _long_matrix(df: Any, row_name: str, col_name: str, value_name: str):
     return out.reset_index().melt(id_vars=row_name, var_name=col_name, value_name=value_name)
 
 
+def _named_series_frame(series: Any, index_name: str, value_name: str):
+    out = series.rename(value_name).reset_index()
+    cols = list(out.columns)
+    if len(cols) >= 2:
+        cols[0] = index_name
+        cols[1] = value_name
+        out.columns = cols
+    return out
+
+
 def _support_label(lower: Any, upper: Any, mean: Any) -> str:
     try:
         lo = float(lower)
@@ -295,22 +305,16 @@ def _write_outputs(workdir: Path, cfg: dict[str, Any], posterior: Path, warnings
         warnings.append(f"Gamma mean export skipped: {exc}")
     try:
         sigma_mean = fit.sigma_mean()
-        sigma_mean.rename("sigma_mean").reset_index(names="response_id").to_csv(
-            tables / "sigma_mean.csv", index=False
-        )
-        sigma_mean.rename("sigma_mean").reset_index(names="response_id").to_csv(
-            results / "S6_sigma_summary.csv", index=False
-        )
+        sigma_tab = _named_series_frame(sigma_mean, "response_id", "sigma_mean")
+        sigma_tab.to_csv(tables / "sigma_mean.csv", index=False)
+        sigma_tab.to_csv(results / "S6_sigma_summary.csv", index=False)
     except Exception as exc:  # noqa: BLE001
         warnings.append(f"sigma mean export skipped: {exc}")
     try:
         rho_mean = fit.rho_mean()
-        rho_mean.rename("rho_mean").reset_index(names="rho_parameter").to_csv(
-            tables / "rho_mean.csv", index=False
-        )
-        rho_mean.rename("rho_mean").reset_index(names="rho_parameter").to_csv(
-            results / "S6_rho_summary.csv", index=False
-        )
+        rho_tab = _named_series_frame(rho_mean, "rho_parameter", "rho_mean")
+        rho_tab.to_csv(tables / "rho_mean.csv", index=False)
+        rho_tab.to_csv(results / "S6_rho_summary.csv", index=False)
     except Exception as exc:  # noqa: BLE001
         warnings.append(f"rho mean export skipped: {exc}")
     for param, fname in (("Beta", "Beta"), ("Gamma", "Gamma"), ("sigma", "sigma"), ("rhoInd", "rhoInd")):
