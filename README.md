@@ -1,49 +1,26 @@
 # JSDM Studio
 
-JSDM Studio is a Windows desktop workbench for reproducible joint species distribution modelling. It provides guided workflows for Hmsc, Hmsc-HPC, jSDM, GJAM, spOccupancy, sjSDM, boral, and a Universal Benchmark workflow.
+<img src="docs/readme-assets/studio-app.svg" alt="JSDM Studio bird and woodland icon" width="96">
 
-> [!IMPORTANT]
-> ## Windows Full Offline Installation (recommended)
->
-> Download **one file** from the [latest GitHub Release](https://github.com/gujiqi/JSDM_Studio/releases/latest):
->
-> `JSDMStudio_Full_Offline_Setup.exe`
->
-> Then right-click it and choose **Run as administrator**. It is a self-contained offline installer; no companion `.bin` file is needed.
->
-> This is the Windows x64 offline edition. It installs JSDM Studio, R 4.5.3, JAGS, Microsoft Visual C++ Redistributable, Python 3.10, WebView2, .NET Desktop Runtime 5, bundled R packages, the Hmsc-HPC CPU environment, and sjSDM's CPU PyTorch backend through reticulate. No package download is required during installation. Keep the installer open until it reports that dependency validation is complete. Allow at least 8 GB of free disk space and several minutes for the first installation.
+JSDM Studio is a local workbench for joint species distribution modelling. Upload ecological data, check the inputs, fit an engine-specific model, inspect diagnostics and predictions, and export results with the settings and scripts needed to audit the analysis.
 
-### Verify the installation
+It includes guided workflows for **Hmsc, Hmsc-HPC, jSDM, GJAM, spOccupancy, sjSDM and boral**, plus a Universal Benchmark. Outputs from different engines are labelled by their model-specific meaning; residual associations are not presented as interchangeable quantities.
 
-Start JSDM Studio from the Start menu or optional desktop shortcut. The final dependency report is written under:
+![JSDM Studio interface in Chinese, showing the project navigation and analysis workflow](docs/readme-assets/home-zh-CN-0.4.8.png)
 
-```text
-C:\Program Files\JSDMStudio\diagnostics
-```
+## Install
 
-An unsuccessful prerequisite check makes the setup fail clearly; it is not reported as a completed installation. For detailed troubleshooting, see [Windows Full Offline Installation](docs/WINDOWS_FULL_OFFLINE_INSTALL.md).
+Download the appropriate package from [JSDM Studio 0.4.8 Releases](https://github.com/gujiqi/JSDM_Studio/releases/tag/v0.4.8):
 
-### Release integrity
+| Platform | Package | Note |
+| --- | --- | --- |
+| Windows x64 | [Full offline installer](https://github.com/gujiqi/JSDM_Studio/releases/download/v0.4.8/JSDMStudio_0.4.8_Windows_x64_Full_Offline.exe) | One EXE; run as administrator. The required runtime and CPU dependencies are bundled. |
+| macOS Apple Silicon | [Offline archive](https://github.com/gujiqi/JSDM_Studio/releases/download/v0.4.8/JSDMStudio_0.4.8_macOS_Apple_Silicon_Offline.zip) | macOS 14+; physical Mac installation has not been verified. |
+| macOS Intel | [Offline archive](https://github.com/gujiqi/JSDM_Studio/releases/download/v0.4.8/JSDMStudio_0.4.8_macOS_Intel_Offline.zip) | macOS 14+; physical Mac installation has not been verified. |
+| Ubuntu 24.04 x64 | [Browser edition](https://github.com/gujiqi/JSDM_Studio/releases/download/v0.4.8/JSDMStudio_0.4.8_Linux_Browser.zip) | First installation requires internet access. |
 
-The current Full Offline Edition has this SHA256 checksum:
+Read the [installation guide](https://github.com/gujiqi/JSDM_Studio/releases/download/v0.4.8/START_HERE.md), [validation report](https://github.com/gujiqi/JSDM_Studio/releases/download/v0.4.8/INSTALLATION_AND_LANGUAGE_AUDIT.md) and [SHA-256 checksums](https://github.com/gujiqi/JSDM_Studio/releases/download/v0.4.8/SHA256SUMS.txt) before installing. Windows and Ubuntu underwent installation and seven-engine smoke tests; macOS packages underwent dependency and architecture checks, not installation on a physical Mac. The interface offers 15 languages; some help text remains in English.
 
-| File | SHA256 |
-| --- | --- |
-| `JSDMStudio_Full_Offline_Setup.exe` | `9B5C1BE5EA3FC6EFC220A005A974B2BC6F2F6F72F6A974DFD17C745F0597BBEA` |
+## Source
 
-### Included workflows
-
-* **Hmsc**: hierarchical JSDMs with traits, phylogeny, random effects, spatial structure, predictions, and diagnostic outputs.
-* **Hmsc-HPC**: a CPU-oriented Python Hmsc-HPC workflow with reproducible Python and HDF5 outputs.
-* **jSDM, GJAM, spOccupancy, sjSDM, and boral**: guided engine-specific inputs, diagnostics, standardized results, scripts, reports, and ZIP exports.
-* **Universal Benchmark**: a shared latent ecological benchmark that generates engine-specific data and records which standardized results are comparable.
-
-### macOS status
-
-This release does **not** include a macOS `.dmg` or `.app`. The Windows installer cannot run on macOS. macOS users may inspect the source and use the Shiny app in a browser only after independently installing compatible R, Python, JAGS and engine dependencies; this route has not yet been packaged or validated as a supported one-click installation.
-
-### Source and documentation
-
-The repository contains source code, workflow scripts, examples, documentation, and installation material. Examples and generated outputs must be interpreted with their engine-specific assumptions and diagnostics; a completed workflow is not, by itself, evidence of statistical convergence or ecological adequacy.
-
-For a local source checkout, the launch scripts are `Launch_JSDMStudio.bat` and `Start_WebView2_Window.bat`. The Full Offline Edition above is the recommended route for a new Windows computer.
+The [0.4.8 runtime source snapshot](https://github.com/gujiqi/JSDM_Studio/releases/download/v0.4.8/JSDMStudio_0.4.8_Runtime_Source.zip) comes from the published application package. Read its [scope and provenance note](https://github.com/gujiqi/JSDM_Studio/releases/download/v0.4.8/SOURCE_SCOPE.md): this repository's automatic source archive does **not** reproduce the installer binaries byte-for-byte. The screenshot and icon above are from the 0.4.8 application, while the repository source tree is being brought into sync separately.
