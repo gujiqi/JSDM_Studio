@@ -4,6 +4,10 @@
 
 options(stringsAsFactors = FALSE)
 
+if (.Platform$OS.type == "windows") {
+  Sys.unsetenv(c("LC_ALL", "LC_COLLATE", "LC_CTYPE", "LC_MONETARY", "LC_TIME", "LANG", "LANGUAGE"))
+}
+
 args0 <- commandArgs(trailingOnly = FALSE)
 file_arg <- "--file="
 script_arg <- args0[startsWith(args0, file_arg)]
@@ -84,7 +88,7 @@ load_engine_upload_dat <- function(case_id, engine_folder) {
     dat$traits <- read_csv_auto(file.path(eng_dir, "TrData.csv"))
     dat$study <- read_csv_auto(file.path(eng_dir, "studyDesign.csv"))
     dat$coords <- read_csv_auto(file.path(eng_dir, "coordinates.csv"))
-    dat$phylo_cov <- read_csv_auto(file.path(eng_dir, "phylo_cov.csv"))
+    dat$taxonomy <- read_csv_auto(file.path(eng_dir, "taxonomy.csv"))
     dat$newick <- read_text(file.path(eng_dir, "phylogeny.nwk"))
   } else if (engine_folder == "02_Hmsc-HPC") {
     dat$Y <- read_csv_auto(file.path(eng_dir, "Y.csv"))
@@ -92,7 +96,7 @@ load_engine_upload_dat <- function(case_id, engine_folder) {
     dat$traits <- read_csv_auto(file.path(eng_dir, "traits.csv"))
     dat$study <- read_csv_auto(file.path(eng_dir, "studyDesign.csv"))
     dat$coords <- read_csv_auto(file.path(eng_dir, "coordinates.csv"))
-    dat$phylo_cov <- read_csv_auto(file.path(eng_dir, "phylo_cov.csv"))
+    dat$taxonomy <- read_csv_auto(file.path(eng_dir, "taxonomy.csv"))
     dat$newdata <- read_csv_auto(file.path(eng_dir, "newdata.csv"))
   } else if (engine_folder == "03_jSDM") {
     dat$Y <- read_csv_auto(file.path(eng_dir, "Y.csv"))
@@ -146,6 +150,7 @@ load_engine_upload_dat <- function(case_id, engine_folder) {
 copy_max_upload_files <- function(outdir, dat) {
   src <- dat$upload_engine_folder
   files <- list.files(src, full.names = TRUE, recursive = FALSE)
+  files <- files[basename(files) != "phylo_cov.csv"]
   rows <- lapply(files, function(f) {
     rel <- basename(f)
     for (root_name in c("inputs", "data")) {
@@ -204,7 +209,7 @@ run_one_case <- function(root, case_id, smoke = FALSE) {
   hcfg$mcmc$samples <- 4L; hcfg$mcmc$transient <- 4L; hcfg$mcmc$nChains <- 1L
   hcfg$outputs$cv <- FALSE; hcfg$outputs$waic <- FALSE
   results <- add_result(results, senv$run_hmsc_case(root, paste(case_id, "hmsc_sample_traits_phylo", sep = "__"), hdat, hcfg, hdat$Y,
-                                                    "maximum upload: sample random effect, traits, phylogenetic covariance."), hdat)
+                                                    "maximum upload: sample random effect, traits, Newick/taxonomy-derived phylogeny."), hdat)
   if (!smoke) {
     hcfg_full <- hcfg; hcfg_full$model$use_traits <- FALSE; hcfg_full$model$use_phylogeny <- FALSE
     hcfg_full$model$random_mode <- "spatial_full"; hcfg_full$model$spatial_method <- "Full"
@@ -228,7 +233,7 @@ run_one_case <- function(root, case_id, smoke = FALSE) {
   hpc$sampler$verbose <- 1L; hpc$sampler$samples <- 2L; hpc$sampler$transient <- 2L; hpc$sampler$chains <- 1L
   hpc$random_effects$nfMax <- 3L
   results <- add_result(results, senv$run_hmschpc_case(root, paste(case_id, "hmschpc_iid_traits_phylo", sep = "__"), hpcdat, hpc, hpcdat$Y,
-                                                       "maximum upload: CPU iid random level, traits, phylogenetic covariance."), hpcdat)
+                                                       "maximum upload: CPU iid random level, traits, taxonomy-derived phylogeny."), hpcdat)
   if (!smoke) {
     hpc2 <- hpc; hpc2$model$distribution <- "poisson"; hpc2$model$use_traits <- FALSE
     hpc2$model$phylogeny_mode <- "none"; hpc2$random_effects$mode <- "none"
@@ -385,7 +390,21 @@ run_suite <- function() {
   cat("SUMMARY_CSV=", normalizePath(file.path(root, "maximum_upload_case_summary.csv"), winslash = "/", mustWork = FALSE), "\n", sep = "")
   cat("AUDIT_ZIP=", normalizePath(zipfile, winslash = "/", mustWork = FALSE), "\n", sep = "")
   cat("SHA256=", sha, "\n", sep = "")
+  attr(summary, "audit_root") <- normalizePath(root, winslash = "/", mustWork = FALSE)
   invisible(summary)
 }
 
-if (!interactive()) run_suite()
+if (!interactive()) {
+  script_warnings <- character()
+  suite_summary <- withCallingHandlers(
+    run_suite(),
+    warning = function(w) {
+      script_warnings <<- c(script_warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  audit_root <- attr(suite_summary, "audit_root") %||% file.path(app_dir, "output")
+  if (length(script_warnings)) {
+    writeLines(unique(script_warnings), file.path(audit_root, "book_maximum_upload_script_warnings.txt"), useBytes = TRUE)
+  }
+}

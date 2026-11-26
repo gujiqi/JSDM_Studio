@@ -9,6 +9,14 @@ parse_gjam_type_vector <- function(Y = NULL, type_table = NULL, type_text = "", 
     idx <- which(cn %in% c("typename", "typenames", "type", "types"))[1]
     if (is.na(idx)) idx <- ncol(type_table)
     type_vec <- toupper(trimws(as.character(type_table[[idx]])))
+    label_col <- which(cn %in% c("response", "response_id", "species", "species_id", "taxon"))[1]
+    ids <- if (!is.na(label_col)) as.character(type_table[[label_col]]) else if (studio_labelled_rows(type_table)) rownames(type_table) else NULL
+    if (!is.null(Y) && !is.null(ids)) {
+      if (anyNA(ids) || anyDuplicated(ids) || !setequal(ids, colnames(Y))) {
+        stop("typeNames.csv must name each response column of Y exactly once.", call. = FALSE)
+      }
+      type_vec <- type_vec[match(colnames(Y), ids)]
+    }
   } else {
     type_vec <- toupper(trimws(single_type %||% "DA"))
   }
@@ -36,8 +44,8 @@ validate_gjam_full <- function(Y, X, type_table = NULL, type_text = "", single_t
                                use_censor = FALSE, use_effort = FALSE, do_traits = FALSE,
                                trimY = FALSE, trim_minObs = 5, REDUCT = FALSE,
                                reduct_N = 20, reduct_r = 3) {
-  ok <- TRUE
-  msg <- character()
+  msg <- studio_row_order_issue(Y, X, "XData.csv")
+  ok <- !length(msg)
   allowed <- c("PA", "CON", "CA", "DA", "FC", "CC", "OC", "CAT")
   if (is.null(Y)) { ok <- FALSE; msg <- c(msg, "Y.csv is required and could not be read.") }
   if (is.null(X)) { ok <- FALSE; msg <- c(msg, "XData.csv is required and could not be read.") }
@@ -90,7 +98,12 @@ validate_gjam_full <- function(Y, X, type_table = NULL, type_text = "", single_t
       }
     }
   }
-  type_vec <- parse_gjam_type_vector(Y, type_table, type_text, single_type)
+  type_vec <- tryCatch(parse_gjam_type_vector(Y, type_table, type_text, single_type),
+                       error = function(e) {
+                         msg <<- c(msg, conditionMessage(e))
+                         ok <<- FALSE
+                         character()
+                       })
   if (!is.null(Y) && length(type_vec) != ncol(Y)) {
     ok <- FALSE
     msg <- c(msg, paste0("typeNames length must be 1 or equal to number of Y columns. Current length=", length(type_vec), ", Y columns=", ncol(Y), "."))
@@ -214,12 +227,13 @@ write_gjam_reproducible_script <- function(outdir) {
     "file_arg <- '--file='",
     "script_arg <- args[startsWith(args, file_arg)]",
     "if (length(script_arg) > 0) {",
-    "  script_path <- normalizePath(sub(file_arg, '', script_arg[[1]]), winslash='/', mustWork=FALSE)",
-    "  setwd(dirname(dirname(script_path)))",
+    "  script_path <- sub(file_arg, '', script_arg[[1]])",
+    "  if (!file.exists(script_path)) script_path <- gsub('~+~', ' ', script_path, fixed = TRUE)",
+    "  setwd(dirname(dirname(normalizePath(script_path, winslash = '/', mustWork = TRUE))))",
     "}",
     "for (d in c('models','chains','tables','predictions','plots','diagnostics','standard','report','results','sensitivity','ordination','missing_data')) dir.create(d, recursive=TRUE, showWarnings=FALSE)",
     "for (d in c('plots','results','sensitivity','ordination','missing_data')) writeLines(paste('GJAM', d, 'outputs are written here when available.'), file.path(d, paste0('README_GJAM_', d, '.txt')))",
-    "`%||%` <- function(x, y) if (is.null(x) || length(x) == 0 || (length(x) == 1 && is.na(x))) y else x",
+    "`%||%` <- function(x, y) if (is.null(x) || length(x) == 0 || (is.atomic(x) && length(x) == 1L && is.na(x))) y else x",
     "as_bool <- function(x, default=FALSE) { if (is.null(x) || length(x)==0 || is.na(x)) return(default); if (is.logical(x)) return(isTRUE(x)); tolower(as.character(x)) %in% c('true','t','1','yes','y') }",
     "as_num <- function(x, default) { z <- suppressWarnings(as.numeric(x)); if (!length(z) || !is.finite(z[1])) default else z[1] }",
     "as_int <- function(x, default) as.integer(round(as_num(x, default)))",
@@ -229,6 +243,7 @@ write_gjam_reproducible_script <- function(outdir) {
     "safe_step <- function(name, expr, required=FALSE) { tryCatch(withCallingHandlers(force(expr), warning=function(w){ append_warning(paste(name, conditionMessage(w), sep=': ')); invokeRestart('muffleWarning') }), error=function(e){ msg <- conditionMessage(e); append_warning(paste(name, msg, sep=': ')); writeLines(msg, file.path('diagnostics', paste0('GJAM_', gsub('[^A-Za-z0-9_]+','_',name), '_error.txt'))); if (required) stop(msg, call.=FALSE); NULL }) }",
     "read_csv_safe <- function(path) { if (!file.exists(path)) return(NULL); dat <- read.csv(path, check.names=FALSE, stringsAsFactors=FALSE); if (ncol(dat) > 1) { first <- dat[[1]]; first_name <- names(dat)[1] %||% ''; first_chr <- as.character(first); first_num <- suppressWarnings(as.numeric(first_chr)); sequence_index <- all(!is.na(first_num)) && identical(as.integer(first_num), seq_len(length(first_num))); row_id_name <- first_name %in% c('', 'X', 'X.1', '...1', 'row.names', 'rowname', 'row_id', 'id', 'site_id', 'sample_id'); row_id_text <- !all(!is.na(first_num)); if (!anyDuplicated(first_chr) && (row_id_name || sequence_index || row_id_text)) { dat <- dat[-1]; rownames(dat) <- make.unique(first_chr) } }; dat }",
     "clean_df <- function(df) { if (is.null(df)) return(NULL); df <- as.data.frame(df, check.names=FALSE, stringsAsFactors=FALSE); for (nm in names(df)) { if (is.character(df[[nm]])) { x <- trimws(df[[nm]]); x[x==''] <- NA; nx <- suppressWarnings(as.numeric(x)); df[[nm]] <- if (all(is.na(x) | !is.na(nx))) nx else factor(x, levels=unique(x[!is.na(x)])) } else if (is.logical(df[[nm]])) df[[nm]] <- factor(df[[nm]]) }; df }",
+    "align_newdata_to_training <- function(new_raw, X) { if (is.null(new_raw)) return(NULL); out <- as.data.frame(new_raw, check.names=FALSE, stringsAsFactors=FALSE); if (is.null(rownames(out))) rownames(out) <- paste0('new_', seq_len(nrow(out))); adj <- list(); add_adj <- function(column, row_id, original, replacement, reason) adj[[length(adj)+1]] <<- data.frame(column=column, row_id=row_id, original=as.character(original), replacement=as.character(replacement), reason=reason, stringsAsFactors=FALSE); for (nm in names(X)) { if (!nm %in% names(out)) { if (is.numeric(X[[nm]])) { repl <- suppressWarnings(stats::median(X[[nm]], na.rm=TRUE)); if (!is.finite(repl)) repl <- 0 } else { lv <- levels(X[[nm]]); if (is.null(lv)) lv <- unique(as.character(X[[nm]])); lv <- lv[!is.na(lv) & nzchar(lv)]; repl <- if (length(lv)) lv[1] else '' }; out[[nm]] <- rep(repl, nrow(out)); add_adj(nm, rownames(out), NA_character_, repl, 'column_missing_in_newdata_filled_from_training_reference') }; if (is.factor(X[[nm]]) || is.character(X[[nm]])) { lv <- levels(X[[nm]]); if (is.null(lv)) lv <- unique(as.character(X[[nm]])); lv <- lv[!is.na(lv) & nzchar(lv)]; if (length(lv)) { vals <- trimws(as.character(out[[nm]])); vals[vals==''] <- NA; bad <- is.na(vals) | !(vals %in% lv); if (any(bad)) { repl <- lv[1]; for (rid in rownames(out)[bad]) add_adj(nm, rid, out[[nm]][rownames(out)==rid][1], repl, 'unseen_or_missing_factor_level_replaced_by_training_reference'); vals[bad] <- repl }; out[[nm]] <- factor(vals, levels=lv) } } else if (is.numeric(X[[nm]])) { vals <- suppressWarnings(as.numeric(out[[nm]])); bad <- !is.finite(vals); if (any(bad)) { repl <- suppressWarnings(stats::median(X[[nm]], na.rm=TRUE)); if (!is.finite(repl)) repl <- 0; for (rid in rownames(out)[bad]) add_adj(nm, rid, out[[nm]][rownames(out)==rid][1], repl, 'non_numeric_or_missing_value_imputed_from_training_median'); vals[bad] <- repl }; out[[nm]] <- vals } }; if (length(adj)) write.csv(do.call(rbind, adj), file.path('predictions','gjamPredict_newdata_adjustments.csv'), row.names=FALSE) else write.csv(data.frame(column=NA_character_, row_id=NA_character_, original=NA_character_, replacement=NA_character_, reason='no_newdata_adjustments_needed'), file.path('predictions','gjamPredict_newdata_adjustments.csv'), row.names=FALSE); out }",
     "response_df_typed <- function(dat, type_vec) { if (is.null(dat)) stop('Y.csv is missing.', call.=FALSE); out <- as.data.frame(dat, check.names=FALSE, stringsAsFactors=FALSE); if (is.null(colnames(out))) colnames(out) <- paste0('y_', seq_len(ncol(out))); if (is.null(rownames(out))) rownames(out) <- paste0('obs_', seq_len(nrow(out))); for (j in seq_along(out)) { if (!identical(unname(type_vec[j]), 'CAT')) { z <- suppressWarnings(as.numeric(out[[j]])); if (any(is.na(z) & !is.na(out[[j]]) & nzchar(trimws(as.character(out[[j]]))))) stop('Non-CAT GJAM response column is not numeric: ', names(out)[j], call.=FALSE); out[[j]] <- z } else { out[[j]] <- as.character(out[[j]]) } }; out }",
     "expand_formula <- function(ftxt, xdata) { ftxt <- trimws(ftxt %||% '~ .'); if (identical(ftxt, '~ .')) { vars <- setdiff(names(xdata), 'intercept'); if (!length(vars)) return(as.formula('~ 1')); return(as.formula(paste('~', paste(vars, collapse=' + ')))) }; as.formula(ftxt) }",
     "parse_type_vec <- function(Y, type_table, type_text, single_type) { if (nzchar(trimws(type_text %||% ''))) tv <- toupper(trimws(unlist(strsplit(type_text, ',')))) else if (!is.null(type_table) && ncol(type_table) >= 1) { cn <- tolower(names(type_table)); idx <- which(cn %in% c('typename','typenames','type','types'))[1]; if (is.na(idx)) idx <- ncol(type_table); tv <- toupper(trimws(as.character(type_table[[idx]]))) } else tv <- toupper(single_type %||% 'DA'); tv <- tv[nzchar(tv)]; if (length(tv) == 1) tv <- rep(tv, ncol(Y)); tv }",
@@ -280,7 +295,7 @@ write_gjam_reproducible_script <- function(outdir) {
     "  if (as_bool(cfg$outputs$save_parameters, TRUE) && !is.null(output$parameters)) { for (nm in names(output$parameters)) write_any_csv(output$parameters[[nm]], file.path('tables', paste0(nm, '.csv'))) }",
     "  if (as_bool(cfg$outputs$save_fit, TRUE)) { write.csv(fit_metrics(output$fit), file.path('tables','fit_DIC_rmspe_xscore_yscore.csv'), row.names=FALSE); saveRDS(output$fit, file.path('results','gjam_fit.rds')) }",
     "  if (!is.null(output$prediction)) { for (nm in names(output$prediction)) write_any_csv(output$prediction[[nm]], file.path('predictions', paste0(nm, '.csv'))); saveRDS(output$prediction, file.path('predictions','gjam_prediction_from_fit.rds')) }",
-    "  pextra <- NULL; new_raw <- clean_df(read_csv_safe(file.path('data','newdata.csv'))); if (as_bool(cfg$analysis$do_predict, TRUE)) { if (!is.null(new_raw)) { pextra <- tryCatch({ rownames(new_raw) <- paste0('new_', seq_len(nrow(new_raw))); gjam::gjamPredict(output, newdata=list(xdata=new_raw, nsim=50), FULL=as_bool(cfg$model$FULL, FALSE)) }, error=function(e) { append_warning(paste('gjamPredict newdata failed; using fitted-data prediction instead', conditionMessage(e), sep=': ')); NULL }) }; if (is.null(pextra)) pextra <- safe_step('gjamPredict_in_sample', gjam::gjamPredict(output, FULL=as_bool(cfg$model$FULL, FALSE))) }; if (!is.null(pextra)) { saveRDS(pextra, file.path('predictions','gjamPredict.rds')); if (!is.null(pextra$sdList)) for (nm in names(pextra$sdList)) write_any_csv(pextra$sdList[[nm]], file.path('predictions', paste0('gjamPredict_sdList_', nm, '.csv'))); if (!is.null(pextra$piList)) for (nm in names(pextra$piList)) write_any_csv(pextra$piList[[nm]], file.path('predictions', paste0('gjamPredict_piList_', nm, '.csv'))); write_any_csv(pextra$ypredMu %||% pextra$sdList$yMu %||% NULL, file.path('predictions','gjamPredict_yMu.csv')) }",
+    "  pextra <- NULL; new_raw <- align_newdata_to_training(read_csv_safe(file.path('data','newdata.csv')), X); if (as_bool(cfg$analysis$do_predict, TRUE)) { if (!is.null(new_raw)) { pextra <- tryCatch({ rownames(new_raw) <- paste0('new_', seq_len(nrow(new_raw))); obj <- gjam::gjamPredict(output, newdata=list(xdata=new_raw, nsim=50), FULL=as_bool(cfg$model$FULL, FALSE)); write.csv(data.frame(status='saved', prediction_source='newdata', reason=''), file.path('predictions','gjamPredict_newdata_manifest.csv'), row.names=FALSE); obj }, error=function(e) { msg <- conditionMessage(e); write.csv(data.frame(status='skipped_fallback_to_in_sample', prediction_source='training', reason=msg), file.path('predictions','gjamPredict_newdata_manifest.csv'), row.names=FALSE); writeLines(msg, file.path('diagnostics','GJAM_gjamPredict_newdata_note.txt')); NULL }) }; if (is.null(pextra)) pextra <- safe_step('gjamPredict_in_sample', gjam::gjamPredict(output, FULL=as_bool(cfg$model$FULL, FALSE))) }; if (!is.null(pextra)) { saveRDS(pextra, file.path('predictions','gjamPredict.rds')); if (!is.null(pextra$sdList)) for (nm in names(pextra$sdList)) write_any_csv(pextra$sdList[[nm]], file.path('predictions', paste0('gjamPredict_sdList_', nm, '.csv'))); if (!is.null(pextra$piList)) for (nm in names(pextra$piList)) write_any_csv(pextra$piList[[nm]], file.path('predictions', paste0('gjamPredict_piList_', nm, '.csv'))); write_any_csv(pextra$ypredMu %||% pextra$sdList$yMu %||% NULL, file.path('predictions','gjamPredict_yMu.csv')) }",
     "  sens <- NULL; if (as_bool(cfg$analysis$do_sensitivity, TRUE)) sens <- safe_step('gjamSensitivity', gjam::gjamSensitivity(output, nsim=min(100, max(10, modelList$ng - modelList$burnin)))); if (!is.null(sens)) { write.csv(as.data.frame(sens), file.path('sensitivity','gjamSensitivity.csv')); write.csv(data.frame(predictor=colnames(sens), mean=colMeans(sens, na.rm=TRUE), sd=apply(sens,2,sd,na.rm=TRUE)), file.path('tables','sensitivity_summary.csv'), row.names=FALSE) }",
     "  ord <- NULL; if (as_bool(cfg$analysis$do_ordination, FALSE)) ord <- safe_step('gjamOrdination', gjam::gjamOrdination(output, PLOT=FALSE)); if (!is.null(ord)) { saveRDS(ord, file.path('ordination','gjamOrdination.rds')); write_any_csv(ord$eVecs, file.path('ordination','ordination_eVecs.csv')); write_any_csv(ord$eValues, file.path('ordination','ordination_eValues.csv')) }",
     "  cond <- NULL; if (as_bool(cfg$analysis$do_conditional, FALSE)) cond <- safe_step('gjamConditionalParameters', gjam::gjamConditionalParameters(output, conditionOn=colnames(Y)[1], nsim=min(200, max(20, modelList$ng - modelList$burnin)))); if (!is.null(cond)) { saveRDS(cond, file.path('tables','gjamConditionalParameters.rds')); for (nm in names(cond)) write_any_csv(cond[[nm]], file.path('tables', paste0('conditional_', nm, '.csv'))) }",

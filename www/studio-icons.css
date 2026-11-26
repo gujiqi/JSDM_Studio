@@ -1,0 +1,110 @@
+.studio-icon {
+  --studio-icon-size: 46px;
+  --symbol-ink: #435865;
+  --symbol-surface: #f0f4f5;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  inline-size: var(--studio-icon-size);
+  block-size: var(--studio-icon-size);
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.studio-icon[data-icon-mode="art"] { color: var(--symbol-ink); }
+.studio-icon[data-icon-tone="blue"] { --symbol-ink: #285b87; --symbol-surface: #edf5fb; }
+.studio-icon[data-icon-tone="teal"] { --symbol-ink: #316c65; --symbol-surface: #eaf4ef; }
+.studio-icon[data-icon-tone="leaf"] { --symbol-ink: #4e713a; --symbol-surface: #eff5e9; }
+.studio-icon[data-icon-tone="clay"] { --symbol-ink: #885a42; --symbol-surface: #f8f1ed; }
+.studio-icon[data-icon-tone="cyan"] { --symbol-ink: #346b81; --symbol-surface: #edf5f7; }
+.studio-icon[data-icon-tone="violet"] { --symbol-ink: #654e85; --symbol-surface: #f3eef8; }
+.studio-icon[data-icon-tone="amber"] { --symbol-ink: #8b652f; --symbol-surface: #fcf5e7; }
+.studio-icon[data-icon-tone="rose"] { --symbol-ink: #845272; --symbol-surface: #f8edf2; }
+.studio-icon[data-icon-tone="indigo"] { --symbol-ink: #54618b; --symbol-surface: #edf0f8; }
+
+.studio-icon > svg {
+  display: block;
+  inline-size: 68%;
+  block-size: 68%;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.studio-icon[data-icon-illustrated="true"] > svg {
+  inline-size: 96%;
+  block-size: 96%;
+  stroke: none;
+}
+
+.studio-icon[data-icon-mode="glyph"] {
+  --studio-icon-size: 1.14em;
+  color: inherit;
+  vertical-align: -.13em;
+}
+
+.studio-icon[data-icon-mode="glyph"] > svg {
+  inline-size: 100%;
+  block-size: 100%;
+  stroke-width: 2;
+}
+
+.studio-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  vertical-align: middle;
+}
+
+.studio-brand > img {
+  display: block;
+  inline-size: 31px;
+  block-size: 31px;
+}
+
+.studio-link, .studio-has-command-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .48em;
+  max-inline-size: 100%;
+}
+
+.studio-has-command-icon.btn-file { white-space: nowrap; }
+
+.navbar .studio-nav-toggle {
+  min-width: 42px;
+  min-height: 38px;
+  padding: 4px 9px;
+  background: #fff;
+  line-height: 1;
+}
+
+.navbar .studio-nav-toggle:hover { background: #eff6f3; }
+.navbar .studio-nav-toggle > .studio-icon[data-icon-mode="glyph"] { --studio-icon-size: 21px; }
+
+.dropdown-menu .studio-icon[data-icon-mode="glyph"] {
+  --studio-icon-size: 16px;
+  margin-inline-end: 9px;
+  color: var(--symbol-ink);
+}
+
+.studio-icon.studio-flow-icon { --studio-icon-size: 64px; }
+.studio-icon.studio-engine-icon { --studio-icon-size: 56px; }
+.studio-icon.studio-engine-chip { --studio-icon-size: 24px; }
+.studio-icon.studio-title-icon { --studio-icon-size: 35px; }
+.studio-icon.studio-setting-icon,
+.studio-icon.studio-guide-icon { --studio-icon-size: var(--studio-row-icon, 46px); }
+
+@media (max-width: 760px) {
+  .studio-icon.studio-flow-icon { --studio-icon-size: 48px; }
+}
+
+@media (max-width: 599px) {
+  .studio-brand > img { inline-size: 28px; block-size: 28px; }
+  .studio-icon.studio-engine-icon { --studio-icon-size: 46px; }
+}
+

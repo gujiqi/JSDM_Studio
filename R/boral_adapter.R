@@ -63,8 +63,9 @@ args <- commandArgs(trailingOnly = FALSE)
 file_arg <- "--file="
 script_arg <- args[startsWith(args, file_arg)]
 if (length(script_arg) > 0) {
-  script_path <- normalizePath(sub(file_arg, "", script_arg[[1]]), winslash = "/", mustWork = FALSE)
-  setwd(dirname(dirname(script_path)))
+  script_path <- sub(file_arg, "", script_arg[[1]])
+  if (!file.exists(script_path)) script_path <- gsub("~+~", " ", script_path, fixed = TRUE)
+  setwd(dirname(dirname(normalizePath(script_path, winslash = "/", mustWork = TRUE))))
 }
 
 `%||%` <- function(x, y) {
@@ -308,6 +309,95 @@ flatten_matrix <- function(x, value_name = "value") {
   idx
 }
 
+extract_boral_prediction_matrix <- function(x, Y_template = NULL) {
+  if (is.null(x)) return(NULL)
+  if (is.data.frame(x)) x <- as.matrix(x)
+  if (is.matrix(x) || is.array(x)) {
+    dims <- dim(x)
+    if (length(dims) >= 2 && all(dims[1:2] > 0)) {
+      mat <- as.matrix(x[, , drop = TRUE])
+      if (!is.null(Y_template) && all(dim(mat) == dim(Y_template))) {
+        rownames(mat) <- rownames(Y_template)
+        colnames(mat) <- colnames(Y_template)
+      }
+      return(mat)
+    }
+  }
+  if (is.list(x) && !is.data.frame(x)) {
+    candidates <- c("fitted", "fit", "mean", "median", "linpred", "predicted", "prediction", "out")
+    for (nm in candidates) {
+      if (!is.null(x[[nm]])) {
+        mat <- extract_boral_prediction_matrix(x[[nm]], Y_template = Y_template)
+        if (!is.null(mat)) return(mat)
+      }
+    }
+    for (nm in names(x)) {
+      mat <- extract_boral_prediction_matrix(x[[nm]], Y_template = Y_template)
+      if (!is.null(mat)) return(mat)
+    }
+  }
+  if (is.atomic(x) && !is.null(Y_template) && length(x) == length(Y_template)) {
+    mat <- matrix(as.numeric(x), nrow = nrow(Y_template), ncol = ncol(Y_template))
+    rownames(mat) <- rownames(Y_template)
+    colnames(mat) <- colnames(Y_template)
+    return(mat)
+  }
+  NULL
+}
+
+standard_prediction_rows <- function(mat, Y_template = NULL, scale = "response") {
+  if (is.null(mat) || length(dim(mat)) != 2) {
+    return(data.frame(engine = "boral", site_id = NA_character_, response_id = NA_character_,
+                      observed = NA_real_, predicted_mean = NA_real_, predicted_lower = NA_real_,
+                      predicted_upper = NA_real_, prediction_scale = scale,
+                      stringsAsFactors = FALSE))
+  }
+  rn <- rownames(mat) %||% if (!is.null(Y_template)) rownames(Y_template) else NULL
+  cn <- colnames(mat) %||% if (!is.null(Y_template)) colnames(Y_template) else NULL
+  if (is.null(rn)) rn <- paste0("site_", seq_len(nrow(mat)))
+  if (is.null(cn)) cn <- paste0("sp_", seq_len(ncol(mat)))
+  obs <- rep(NA_real_, length(mat))
+  if (!is.null(Y_template) && all(dim(mat) == dim(Y_template))) obs <- as.numeric(Y_template)
+  data.frame(
+    engine = "boral",
+    site_id = rep(rn, times = ncol(mat)),
+    response_id = rep(cn, each = nrow(mat)),
+    observed = obs,
+    predicted_mean = as.numeric(mat),
+    predicted_lower = NA_real_,
+    predicted_upper = NA_real_,
+    prediction_scale = scale,
+    stringsAsFactors = FALSE
+  )
+}
+
+standard_prediction_site_species_rows <- function(pred_rows) {
+  if (is.null(pred_rows) || !nrow(pred_rows)) {
+    return(data.frame(engine = "boral", site_id = NA_character_, species = NA_character_,
+                      observed = NA_real_, predicted = NA_real_, truth_probability = NA_real_,
+                      residual = NA_real_, prediction_scale = "response",
+                      stringsAsFactors = FALSE))
+  }
+  observed <- suppressWarnings(as.numeric(pred_rows$observed))
+  predicted <- suppressWarnings(as.numeric(pred_rows$predicted_mean))
+  data.frame(
+    engine = pred_rows$engine %||% "boral",
+    site_id = pred_rows$site_id %||% NA_character_,
+    species = pred_rows$response_id %||% NA_character_,
+    observed = observed,
+    predicted = predicted,
+    truth_probability = NA_real_,
+    residual = ifelse(is.finite(observed) & is.finite(predicted), observed - predicted, NA_real_),
+    prediction_scale = pred_rows$prediction_scale %||% "response",
+    stringsAsFactors = FALSE
+  )
+}
+
+write_prediction_manifest <- function(output, status_value, note, path = file.path("predictions", "prediction_manifest.csv")) {
+  write.csv(data.frame(output = output, status = status_value, note = note, stringsAsFactors = FALSE),
+            path, row.names = FALSE)
+}
+
 write_status <- function() {
   set_runtime_seconds(as.numeric(difftime(Sys.time(), start_time, units = "secs")))
   if (requireNamespace("jsonlite", quietly = TRUE)) {
@@ -324,6 +414,10 @@ write_status <- function() {
 }
 
 write_standard <- function(Y = NULL, X = NULL) {
+  write_standard_table <- function(name, dat, overwrite = FALSE) {
+    path <- file.path("standard", paste0(name, ".csv"))
+    if (isTRUE(overwrite) || !file.exists(path)) write.csv(dat, path, row.names = FALSE)
+  }
   write.csv(data.frame(
     run_id = basename(getwd()), engine = "boral", status = status$status,
     n_sites = if (is.null(Y)) NA_integer_ else nrow(Y),
@@ -331,21 +425,21 @@ write_standard <- function(Y = NULL, X = NULL) {
     n_predictors = if (is.null(X)) NA_integer_ else ncol(X),
     stringsAsFactors = FALSE
   ), file.path("standard", "run_summary.csv"), row.names = FALSE)
-  write.csv(data.frame(engine = "boral", response_id = NA_character_, predictor = NA_character_,
+  write_standard_table("effects_long", data.frame(engine = "boral", response_id = NA_character_, predictor = NA_character_,
                        direction = NA_character_, estimate = NA_real_, lower = NA_real_, upper = NA_real_,
                        notes = status$status, stringsAsFactors = FALSE),
-            file.path("standard", "effects_long.csv"), row.names = FALSE)
-  write.csv(data.frame(engine = "boral", site_id = NA_character_, response_id = NA_character_,
+            overwrite = FALSE)
+  write_standard_table("predictions_long", data.frame(engine = "boral", site_id = NA_character_, response_id = NA_character_,
                        observed = NA_real_, predicted_mean = NA_real_, predicted_lower = NA_real_,
                        predicted_upper = NA_real_, stringsAsFactors = FALSE),
-            file.path("standard", "predictions_long.csv"), row.names = FALSE)
-  write.csv(data.frame(engine = "boral", response_1 = NA_character_, response_2 = NA_character_,
+            overwrite = FALSE)
+  write_standard_table("associations_long", data.frame(engine = "boral", response_1 = NA_character_, response_2 = NA_character_,
                        association_type = NA_character_, estimate = NA_real_, comparable_level = status$status,
                        stringsAsFactors = FALSE),
-            file.path("standard", "associations_long.csv"), row.names = FALSE)
-  write.csv(data.frame(engine = "boral", metric = NA_character_, response_id = NA_character_,
+            overwrite = FALSE)
+  write_standard_table("fit_metrics", data.frame(engine = "boral", metric = NA_character_, response_id = NA_character_,
                        value = NA_real_, notes = status$status, stringsAsFactors = FALSE),
-            file.path("standard", "fit_metrics.csv"), row.names = FALSE)
+            overwrite = FALSE)
 }
 
 write_report <- function(extra = "") {
@@ -576,9 +670,38 @@ fit_or_fail <- tryCatch({
   })
   safe_step("fitted values", {
     if (isTRUE(diag_cfg$fitted %||% TRUE)) {
-      fv <- boral::fitted.boral(fit)
-      write.csv(flatten_matrix(fv, "fitted"), file.path("predictions", "fitted_values.csv"), row.names = FALSE)
-      write.csv(flatten_matrix(fv, "predicted_mean"), file.path("standard", "predictions_long.csv"), row.names = FALSE)
+      fv <- tryCatch(boral::fitted.boral(fit, est = "mean"), error = function(e) e)
+      if (inherits(fv, "error")) {
+        fv <- tryCatch(boral::predict.boral(fit, predict.type = "conditional", scale = "response", est = "mean"),
+                       error = function(e) e)
+      }
+      if (inherits(fv, "error")) {
+        write_prediction_manifest(
+          "fitted_values",
+          "not_exported_by_boral_for_current_model",
+          paste0("boral fitted/predict methods did not return fitted values for this model: ", conditionMessage(fv)),
+          file.path("predictions", "fitted_values_manifest.csv")
+        )
+      } else {
+        saveRDS(fv, file.path("predictions", "fitted_values.rds"))
+        write.csv(flatten_matrix(fv, "fitted"), file.path("predictions", "fitted_values.csv"), row.names = FALSE)
+        fv_mat <- extract_boral_prediction_matrix(fv, Y_template = Ymat)
+        if (!is.null(fv_mat)) {
+          fitted_scale <- if (all(fam == "binomial") && all(trial_size == 1))
+            "occurrence_probability" else "response"
+          pred_rows <- standard_prediction_rows(fv_mat, Y_template = Ymat, scale = fitted_scale)
+          write.csv(pred_rows, file.path("standard", "predictions_long.csv"), row.names = FALSE)
+          write.csv(standard_prediction_site_species_rows(pred_rows),
+                    file.path("standard", "predictions_site_species.csv"), row.names = FALSE)
+        } else {
+          write_prediction_manifest(
+            "fitted_values",
+            "returned_object_not_matrix_like",
+            "boral returned a fitted object, but JSDM Studio could not map it safely to site-by-species rows.",
+            file.path("predictions", "fitted_values_manifest.csv")
+          )
+        }
+      }
     }
   })
   safe_step("predictions", {
@@ -586,22 +709,49 @@ fit_or_fail <- tryCatch({
       new_clean <- clean_predictors(newdata_raw)
       if (!is.null(new_clean)) {
         new_design <- make_design(new_clean, model_cfg$formula.X %||% "~ .")
+        fit_lv_control <- fit$lv.control %||% list()
+        cfg_lv_control <- model_cfg$lv.control %||% list()
+        fit_num_lv <- suppressWarnings(as.integer(fit$num.lv %||% fit_lv_control$num.lv %||% cfg_lv_control$num.lv %||% 0))
+        if (!is.finite(fit_num_lv)) fit_num_lv <- 0L
+        fit_row_eff <- as.character(fit$row.eff %||% model_cfg$row.eff %||% "none")
+        has_row_ids <- !is.null(fit$row.ids)
+        has_ranef_ids <- !is.null(fit$ranef.ids) || !is.null(ranefids)
         can_new_predict <- !is.null(new_design) &&
-          (fit$lv.control$type %||% "independent") == "independent" &&
-          (fit$row.eff %||% "none") == "none" &&
-          is.null(fit$ranef.ids)
+          fit_num_lv == 0L &&
+          fit_row_eff == "none" &&
+          !has_row_ids &&
+          !has_ranef_ids
         if (isTRUE(can_new_predict)) {
-          pr <- boral::predict.boral(fit, newX = new_design, predict.type = "marginal", scale = "response")
-          saveRDS(pr, file.path("predictions", "predictions.rds"))
-          write.csv(flatten_matrix(pr, "predicted"), file.path("predictions", "predictions.csv"), row.names = FALSE)
+          pr <- tryCatch(boral::predict.boral(fit, newX = new_design, predict.type = "marginal", scale = "response"),
+                         error = function(e) e)
+          if (inherits(pr, "error")) {
+            write_prediction_manifest("newdata_predictions", "not_exported_by_boral",
+                                      paste0("predict.boral failed for newdata: ", conditionMessage(pr)))
+          } else {
+            saveRDS(pr, file.path("predictions", "predictions.rds"))
+            write.csv(flatten_matrix(pr, "predicted"), file.path("predictions", "predictions.csv"), row.names = FALSE)
+          }
         } else {
-          write.csv(data.frame(output = "newdata_predictions", status = "skipped_requires_new_latent_distance_or_random_effect_ids", stringsAsFactors = FALSE),
-                    file.path("predictions", "prediction_manifest.csv"), row.names = FALSE)
+          write_prediction_manifest(
+            "newdata_predictions",
+            "skipped_boral_newdata_prediction_requires_no_latent_or_random_effect_terms",
+            paste0("Current model has num.lv=", fit_num_lv,
+                   ", row.eff=", fit_row_eff,
+                   ", row.ids=", has_row_ids,
+                   ", ranef.ids=", has_ranef_ids,
+                   ". boral newdata prediction needs a compatible newrow/newranef/distance design for these settings.")
+          )
         }
       } else {
-        pr <- boral::predict.boral(fit, scale = "response")
-        saveRDS(pr, file.path("predictions", "predictions.rds"))
-        write.csv(flatten_matrix(pr, "predicted"), file.path("predictions", "predictions.csv"), row.names = FALSE)
+        pr <- tryCatch(boral::predict.boral(fit, predict.type = "conditional", scale = "response"),
+                       error = function(e) e)
+        if (inherits(pr, "error")) {
+          write_prediction_manifest("in_sample_predictions", "not_exported_by_boral",
+                                    paste0("predict.boral failed for in-sample predictions: ", conditionMessage(pr)))
+        } else {
+          saveRDS(pr, file.path("predictions", "predictions.rds"))
+          write.csv(flatten_matrix(pr, "predicted"), file.path("predictions", "predictions.csv"), row.names = FALSE)
+        }
       }
     }
   })

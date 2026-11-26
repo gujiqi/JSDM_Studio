@@ -69,6 +69,11 @@ validate_jsdm_full <- function(Y = NULL, X = NULL, Tr = NULL, long = NULL, trial
       ok <- FALSE
       msg <- c(msg, "Y.csv and XData.csv are required for matrix-format jSDM models.")
     } else {
+      pairing <- c(studio_row_order_issue(Y, X, "XData.csv"),
+                   if (allow_traits) studio_trait_order_issue(Y, Tr),
+                   studio_row_order_issue(Y, trials, "trials.csv"))
+      ok <- ok && !length(pairing)
+      msg <- c(msg, pairing)
       ycheck <- numeric_matrix_check(Y, "jSDM Y")
       ok <- ok && isTRUE(ycheck$ok)
       msg <- c(msg, ycheck$messages)
@@ -172,12 +177,13 @@ write_jsdm_reproducible_script <- function(outdir) {
     "file_arg <- '--file='",
     "script_arg <- args[startsWith(args, file_arg)]",
     "if (length(script_arg) > 0) {",
-    "  script_path <- normalizePath(sub(file_arg, '', script_arg[[1]]), winslash = '/', mustWork = FALSE)",
-    "  setwd(dirname(dirname(script_path)))",
+    "  script_path <- sub(file_arg, '', script_arg[[1]])",
+    "  if (!file.exists(script_path)) script_path <- gsub('~+~', ' ', script_path, fixed = TRUE)",
+    "  setwd(dirname(dirname(normalizePath(script_path, winslash = '/', mustWork = TRUE))))",
     "}",
     "for (d in c('models','mcmc','tables','predictions','plots','diagnostics','standard','report','results')) dir.create(d, showWarnings = FALSE, recursive = TRUE)",
     "writeLines(c('jSDM plot outputs', '=================', 'Diagnostic and result figures are written here when enabled. If figure export is disabled, this README keeps the folder intentionally non-empty.'), file.path('plots','README_jSDM_plots.txt'))",
-    "`%||%` <- function(x, y) if (is.null(x) || length(x) == 0 || (length(x) == 1 && is.na(x))) y else x",
+    "`%||%` <- function(x, y) if (is.null(x) || length(x) == 0 || (is.atomic(x) && length(x) == 1L && is.na(x))) y else x",
     "as_bool <- function(x, default = FALSE) { if (is.null(x) || length(x) == 0 || is.na(x)) return(default); if (is.logical(x)) return(isTRUE(x)); tolower(as.character(x)) %in% c('true','t','1','yes','y') }",
     "as_num <- function(x, default) { z <- suppressWarnings(as.numeric(x)); if (!length(z) || !is.finite(z[1])) default else z[1] }",
     "as_int <- function(x, default) as.integer(round(as_num(x, default)))",
@@ -191,6 +197,7 @@ write_jsdm_reproducible_script <- function(outdir) {
     "safe_step <- function(name, expr, required = FALSE) {",
     "  tryCatch(withCallingHandlers(force(expr), warning = function(w) { append_warning(paste(name, conditionMessage(w), sep=': ')); invokeRestart('muffleWarning') }), error = function(e) { msg <- conditionMessage(e); append_warning(paste(name, msg, sep=': ')); writeLines(msg, file.path('diagnostics', paste0('jSDM_', gsub('[^A-Za-z0-9_]+', '_', name), '_error.txt'))); if (required) stop(msg, call. = FALSE); NULL })",
     "}",
+    "write_optional_skip <- function(folder, file, status, reason, fallback = '') { dir.create(folder, showWarnings=FALSE, recursive=TRUE); write.csv(data.frame(status=status, reason=reason, fallback=fallback, stringsAsFactors=FALSE), file.path(folder, file), row.names=FALSE) }",
     "read_csv_safe <- function(path) {",
     "  if (!file.exists(path)) return(NULL)",
     "  dat <- read.csv(path, check.names = FALSE, stringsAsFactors = FALSE)",
@@ -340,11 +347,11 @@ write_jsdm_reproducible_script <- function(outdir) {
     "  write.csv(mcmc_summary(model_primary$mcmc.V %||% NULL, 'mcmc.V'), file.path('tables','V_summary.csv'), row.names=FALSE)",
     "  write.csv(mcmc_summary(model_primary$mcmc.Deviance %||% NULL, 'mcmc.Deviance'), file.path('tables','Deviance_summary.csv'), row.names=FALSE)",
     "  pred_mat <- prediction_slot(model_primary); write_matrix_if(pred_mat, file.path('predictions','fitted_values.csv')); saveRDS(pred_mat, file.path('predictions','fitted_values.rds'))",
-    "  if (as_bool(cfg$prediction$do_predict, TRUE)) safe_step('predict.jSDM', { sites <- rownames(pred_mat %||% model_primary$model_spec$presence_data %||% model_primary$model_spec$count_data %||% model_primary$model_spec$response_data); species <- colnames(pred_mat %||% model_primary$model_spec$presence_data %||% model_primary$model_spec$count_data %||% model_primary$model_spec$response_data); max_sites <- as_int(cfg$prediction$max_prediction_sites, 500); site_req <- prediction_id_value(prediction_ids_raw, c('Id_sites','site','site_id','sites'), cfg$prediction$Id_sites); sp_req <- prediction_id_value(prediction_ids_raw, c('Id_species','species','species_id','responses'), cfg$prediction$Id_species); Id_sites <- parse_ids(site_req, sites, max_sites); Id_species <- parse_ids(sp_req, species, length(species)); nd <- clean_df(new_raw); if (!is.null(nd)) { if (as_bool(cfg$model$scale_site_data, TRUE)) nd <- scale_site_data(nd); if (!is.null(rownames(nd)) && any(rownames(nd) %in% sites)) Id_sites <- intersect(rownames(nd), sites); nd <- nd[seq_len(min(nrow(nd), length(Id_sites))),,drop=FALSE] }; pobj <- predict(model_primary, newdata=nd, Id_species=Id_species, Id_sites=Id_sites, type=cfg$prediction$predict_type %||% 'mean', probs=parse_probs(cfg$prediction$predict_probs)); saveRDS(pobj, file.path('predictions','predict_jSDM.rds')); if (is.matrix(pobj) || is.data.frame(pobj)) write.csv(pobj, file.path('predictions','predict_jSDM.csv')) else if (is.list(pobj)) write.csv(data.frame(object=names(pobj), rows=vapply(pobj, NROW, integer(1)), cols=vapply(pobj, NCOL, integer(1))), file.path('predictions','predict_jSDM_manifest.csv'), row.names=FALSE) })",
+    "  if (as_bool(cfg$prediction$do_predict, TRUE)) { predict_note <- data.frame(status='not_attempted', reason='', fallback='', stringsAsFactors=FALSE); tryCatch({ sites <- rownames(pred_mat %||% model_primary$model_spec$presence_data %||% model_primary$model_spec$count_data %||% model_primary$model_spec$response_data); species <- colnames(pred_mat %||% model_primary$model_spec$presence_data %||% model_primary$model_spec$count_data %||% model_primary$model_spec$response_data); max_sites <- as_int(cfg$prediction$max_prediction_sites, 500); site_req <- prediction_id_value(prediction_ids_raw, c('Id_sites','site','site_id','sites'), cfg$prediction$Id_sites); sp_req <- prediction_id_value(prediction_ids_raw, c('Id_species','species','species_id','responses'), cfg$prediction$Id_species); Id_sites <- parse_ids(site_req, sites, max_sites); Id_species <- parse_ids(sp_req, species, length(species)); nd <- clean_df(new_raw); if (!is.null(nd)) { if (as_bool(cfg$model$scale_site_data, TRUE)) nd <- scale_site_data(nd); if (!is.null(rownames(nd)) && any(rownames(nd) %in% sites)) Id_sites <- intersect(rownames(nd), sites); nd <- nd[seq_len(min(nrow(nd), length(Id_sites))),,drop=FALSE] }; pobj <- predict(model_primary, newdata=nd, Id_species=Id_species, Id_sites=Id_sites, type=cfg$prediction$predict_type %||% 'mean', probs=parse_probs(cfg$prediction$predict_probs)); saveRDS(pobj, file.path('predictions','predict_jSDM.rds')); if (is.matrix(pobj) || is.data.frame(pobj)) write.csv(pobj, file.path('predictions','predict_jSDM.csv')) else if (is.list(pobj)) write.csv(data.frame(object=names(pobj), rows=vapply(pobj, NROW, integer(1)), cols=vapply(pobj, NCOL, integer(1))), file.path('predictions','predict_jSDM_objects.csv'), row.names=FALSE); predict_note <- data.frame(status='saved', reason='', fallback='', stringsAsFactors=FALSE) }, error=function(e) { msg <- conditionMessage(e); writeLines(msg, file.path('diagnostics','jSDM_predict_note.txt')); predict_note <<- data.frame(status='skipped_fallback_to_fitted_values', reason=msg, fallback='predictions/fitted_values.csv', stringsAsFactors=FALSE) }); write.csv(predict_note, file.path('predictions','predict_jSDM_manifest.csv'), row.names=FALSE) }",
     "  obs <- Y; if (is.null(obs) && !is.null(model_primary$model_spec$presence_data)) obs <- model_primary$model_spec$presence_data; if (is.null(obs) && !is.null(model_primary$model_spec$count_data)) obs <- model_primary$model_spec$count_data; if (is.null(obs) && !is.null(model_primary$model_spec$response_data)) obs <- model_primary$model_spec$response_data",
     "  write.csv(standard_predictions(pred_mat, obs), file.path('standard','predictions_long.csv'), row.names=FALSE)",
     "  write.csv(fit_metrics(obs, pred_mat, paste(model_primary$model_spec$family, model_primary$model_spec$link, sep='_')), file.path('standard','fit_metrics.csv'), row.names=FALSE)",
-    "  rc <- NULL; if (as_bool(cfg$outputs$residual_cor, TRUE) && as_int(model_primary$model_spec$n_latent,0) > 1) rc <- safe_step('get_residual_cor', jSDM::get_residual_cor(model_primary, prob=as_num(cfg$diagnostics$cor_prob,0.95), type=cfg$diagnostics$cor_type %||% 'mean')) else append_warning('residual correlations skipped: jSDM requires n_latent > 1')",
+    "  rc <- NULL; if (as_bool(cfg$outputs$residual_cor, TRUE) && as_int(model_primary$model_spec$n_latent,0) > 1) rc <- safe_step('get_residual_cor', jSDM::get_residual_cor(model_primary, prob=as_num(cfg$diagnostics$cor_prob,0.95), type=cfg$diagnostics$cor_type %||% 'mean')) else write_optional_skip('tables', 'residual_cor_skipped.csv', 'skipped', 'jSDM residual correlations require n_latent > 1; this is an expected optional-output boundary, not a fitting error.', '')",
     "  if (!is.null(rc)) { for (nm in names(rc)) write_matrix_if(rc[[nm]], file.path('tables', paste0('residual_cor_', nm, '.csv'))); write.csv(assoc_long(rc$cor.mean, 'residual_cor'), file.path('standard','associations_long.csv'), row.names=FALSE) } else write.csv(assoc_long(NULL, 'residual_cor'), file.path('standard','associations_long.csv'), row.names=FALSE)",
     "  ec <- NULL; if (as_bool(cfg$outputs$enviro_cor, TRUE)) ec <- safe_step('get_enviro_cor', jSDM::get_enviro_cor(model_primary, prob=as_num(cfg$diagnostics$cor_prob,0.95), type=cfg$diagnostics$cor_type %||% 'mean'))",
     "  if (!is.null(ec)) for (nm in names(ec)) write_matrix_if(ec[[nm]], file.path('tables', paste0('enviro_cor_', nm, '.csv')))",

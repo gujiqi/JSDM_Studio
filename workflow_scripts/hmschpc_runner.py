@@ -55,6 +55,18 @@ def _read_csv(path: Path):
     return pd.read_csv(path, index_col=0)
 
 
+def _response_mean(fit: Any, X: Any, distribution: str):
+    """Average posterior response probabilities, not probit latent means."""
+    if distribution.lower() != "probit":
+        return fit.predict_mean(X, random_effects="none")
+    import pandas as pd
+    from scipy.special import ndtr
+
+    latent_draws = fit.predict_samples(X, response=False, random_effects="none")
+    response_mean = ndtr(latent_draws).mean(axis=(0, 1))
+    return pd.DataFrame(response_mean, index=X.index, columns=fit.beta_mean().columns)
+
+
 def _safe_summary(fit, param: str, out_path: Path, warnings: list[str]) -> None:
     try:
         tab = fit.summary(param)
@@ -79,6 +91,18 @@ def _array_to_csv(value: Any, out_path: Path) -> None:
     pd.DataFrame(flat).to_csv(out_path, index=False)
 
 
+def _numeric_values(value: Any):
+    import numpy as np
+
+    if hasattr(value, "to_array"):
+        arr = value.to_array().values
+    elif hasattr(value, "values"):
+        arr = value.values
+    else:
+        arr = value
+    return np.asarray(arr, dtype=float).ravel()
+
+
 def _read_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
@@ -91,6 +115,32 @@ def _write_session_info(path: Path, warnings: list[str]) -> None:
     import importlib.metadata
     import platform
 
+    def package_version(pkg: str) -> str:
+        try:
+            return importlib.metadata.version(pkg)
+        except Exception as exc:  # noqa: BLE001
+            if pkg == "pyhmsc":
+                try:
+                    import pyhmsc  # type: ignore
+
+                    source = Path(getattr(pyhmsc, "__file__", "")).resolve()
+                    setup_py = source.parents[1] / "setup.py" if len(source.parents) > 1 else None
+                    version_hint = "local source"
+                    if setup_py and setup_py.exists():
+                        text = setup_py.read_text(encoding="utf-8", errors="replace")
+                        import re
+
+                        hit = re.search(r"version\s*=\s*['\"]([^'\"]+)['\"]", text)
+                        if hit:
+                            version_hint = f"local source {hit.group(1)}"
+                    return f"{version_hint} ({source})"
+                except Exception as import_exc:  # noqa: BLE001
+                    warnings.append(f"Session info could not import pyhmsc: {import_exc}")
+                    return f"not available ({exc})"
+            if pkg == "tensorflow":
+                warnings.append(f"Session info could not read {pkg}: {exc}")
+            return f"not available ({exc})"
+
     packages = ["numpy", "pandas", "h5py", "tensorflow", "tensorflow-probability", "pyhmsc"]
     lines = [
         "Hmsc-HPC session information",
@@ -102,13 +152,7 @@ def _write_session_info(path: Path, warnings: list[str]) -> None:
         "Packages:",
     ]
     for pkg in packages:
-        try:
-            version = importlib.metadata.version(pkg)
-        except Exception as exc:  # noqa: BLE001
-            version = f"not available ({exc})"
-            if pkg in {"tensorflow", "pyhmsc"}:
-                warnings.append(f"Session info could not read {pkg}: {exc}")
-        lines.append(f"- {pkg}: {version}")
+        lines.append(f"- {pkg}: {package_version(pkg)}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -250,7 +294,13 @@ def _write_hmschpc_step_scripts(workdir: Path, cfg: dict[str, Any]) -> None:
     )
 
 
-def _write_outputs(workdir: Path, cfg: dict[str, Any], posterior: Path, warnings: list[str]) -> None:
+def _write_outputs(
+    workdir: Path,
+    cfg: dict[str, Any],
+    posterior: Path,
+    warnings: list[str],
+    scientific_caveats: list[str],
+) -> None:
     import numpy as np
     import pandas as pd
     from pyhmsc.posterior import HmscFit
@@ -358,7 +408,11 @@ def _write_outputs(workdir: Path, cfg: dict[str, Any], posterior: Path, warnings
         ]
     ).to_csv(results / "S2_fit_models.csv", index=False)
     export_predictions = bool(cfg.get("outputs", {}).get("predictions", True))
-    pred = fit.predict_mean(X, random_effects="none")
+    distribution = str(cfg.get("model", {}).get("distribution", "")).lower()
+    prediction_scale = "occurrence_probability" if distribution == "probit" else (
+        "count_mean" if distribution == "poisson" else "normal_mean"
+    )
+    pred = _response_mean(fit, X, distribution)
     pred_long = (
         pred.reset_index(names="site_id")
         .melt(id_vars="site_id", var_name="response_id", value_name="predicted_mean")
@@ -372,6 +426,7 @@ def _write_outputs(workdir: Path, cfg: dict[str, Any], posterior: Path, warnings
     pred_long["predicted_lower"] = np.nan
     pred_long["predicted_upper"] = np.nan
     pred_long["prediction_set"] = "training"
+    pred_long["prediction_scale"] = prediction_scale
     prediction_cols = [
         "engine",
         "site_id",
@@ -381,6 +436,7 @@ def _write_outputs(workdir: Path, cfg: dict[str, Any], posterior: Path, warnings
         "predicted_lower",
         "predicted_upper",
         "prediction_set",
+        "prediction_scale",
     ]
     pred_long = pred_long[prediction_cols]
     prediction_tables = [pred_long]
@@ -393,7 +449,7 @@ def _write_outputs(workdir: Path, cfg: dict[str, Any], posterior: Path, warnings
         if newdata_path.exists():
             try:
                 X_new = _read_csv(newdata_path)
-                pred_new = fit.predict_mean(X_new, random_effects="none")
+                pred_new = _response_mean(fit, X_new, distribution)
                 pred_new.to_csv(preds_dir / "newdata_predicted_mean.csv")
                 new_long = (
                     pred_new.reset_index(names="site_id")
@@ -404,11 +460,26 @@ def _write_outputs(workdir: Path, cfg: dict[str, Any], posterior: Path, warnings
                 new_long["predicted_lower"] = np.nan
                 new_long["predicted_upper"] = np.nan
                 new_long["prediction_set"] = "newdata"
+                new_long["prediction_scale"] = prediction_scale
                 prediction_tables.append(new_long[prediction_cols])
                 new_long[prediction_cols].to_csv(preds_dir / "newdata_predictions_long.csv", index=False)
                 new_long[prediction_cols].to_csv(results / "S7_predictions_newdata.csv", index=False)
             except Exception as exc:  # noqa: BLE001
-                warnings.append(f"newdata prediction skipped: {exc}")
+                reason = str(exc)
+                pd.DataFrame(
+                    [
+                        {
+                            "status": "skipped_fallback_to_training_predictions",
+                            "reason": reason,
+                            "fallback_file": "predictions/training_predictions_long.csv",
+                        }
+                    ]
+                ).to_csv(preds_dir / "newdata_prediction_manifest.csv", index=False)
+                (diagnostics / "HmscHPC_newdata_prediction_note.txt").write_text(
+                    "Newdata prediction was skipped, but the fitted model and training predictions were exported.\n"
+                    f"Reason: {reason}\n",
+                    encoding="utf-8",
+                )
         pred_long_all = pd.concat(prediction_tables, ignore_index=True)
         pred_long_all.to_csv(standard / "predictions_long.csv", index=False)
         pred_long_all.to_csv(preds_dir / "predictions_long.csv", index=False)
@@ -548,8 +619,8 @@ def _write_outputs(workdir: Path, cfg: dict[str, Any], posterior: Path, warnings
             ess = fit.ess("Beta")
             _array_to_csv(rhat, diagnostics / "Beta_rhat.csv")
             _array_to_csv(ess, diagnostics / "Beta_ess.csv")
-            rhat_arr = np.asarray(rhat, dtype=float).ravel()
-            ess_arr = np.asarray(ess, dtype=float).ravel()
+            rhat_arr = _numeric_values(rhat)
+            ess_arr = _numeric_values(ess)
             conv = pd.DataFrame(
                 [
                     {
@@ -567,7 +638,7 @@ def _write_outputs(workdir: Path, cfg: dict[str, Any], posterior: Path, warnings
             conv.to_csv(results / "S3_convergence_summary.csv", index=False)
             conv.to_csv(standard / "diagnostics_long.csv", index=False)
         except Exception as exc:  # noqa: BLE001
-            warnings.append(f"ArviZ diagnostics skipped: {exc}")
+            scientific_caveats.append(f"ArviZ diagnostics skipped for optional Hmsc-HPC Rhat/ESS export: {exc}")
             (diagnostics / "HmscHPC_diagnostics_warning.txt").write_text(str(exc), encoding="utf-8")
             conv = pd.DataFrame(
                 [
@@ -650,7 +721,12 @@ def _write_outputs(workdir: Path, cfg: dict[str, Any], posterior: Path, warnings
                     encoding="utf-8",
                 )
         except Exception as exc:  # noqa: BLE001
-            warnings.append(f"Plot export skipped: {exc}")
+            scientific_caveats.append(f"Optional Hmsc-HPC plot export skipped: {exc}")
+            (plots / "HmscHPC_plot_export_skipped.txt").write_text(
+                f"Optional plot export was skipped: {exc}\n"
+                "The fitted posterior, standard tables and prediction tables were still exported.\n",
+                encoding="utf-8",
+            )
 
     run_summary = pd.DataFrame(
         [
@@ -699,6 +775,7 @@ def _write_outputs(workdir: Path, cfg: dict[str, Any], posterior: Path, warnings
         encoding="utf-8",
     )
     _write_session_info(diagnostics / "session_info.txt", warnings)
+    _write_session_info(diagnostics / "python_session_info.txt", warnings)
     report = report_dir / "Hmsc-HPC_report.html"
     report.write_text(
         "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Hmsc-HPC report</title>"
@@ -752,6 +829,11 @@ def main() -> int:
     diagnostics.mkdir(parents=True, exist_ok=True)
     warnings: list[str] = []
     errors: list[str] = []
+    scientific_caveats: list[str] = [
+        "A fitted software-test run means the workflow and output contract executed; publication inference still requires adequate sampler settings and convergence diagnostics.",
+        "Hmsc-HPC outputs are generated by the CPU pyhmsc/HDF5 path and should not be treated as a full replacement for every R Hmsc feature.",
+        "Association parameters are engine-specific and should be compared only where standard tables explicitly mark them as comparable.",
+    ]
     status = "fit_failed"
     cfg: dict[str, Any] = {}
 
@@ -841,7 +923,7 @@ def main() -> int:
             code = _run_cmd(cmd, cwd=workdir, log_path=diagnostics / "HmscHPC_sample.log", env=env)
             if code != 0:
                 raise RuntimeError("Hmsc-HPC sampler failed; see diagnostics/HmscHPC_sample.log")
-            _write_outputs(workdir, cfg, posterior, warnings)
+            _write_outputs(workdir, cfg, posterior, warnings, scientific_caveats)
             status = "fitted"
 
     except Exception as exc:  # noqa: BLE001
@@ -999,6 +1081,7 @@ def main() -> int:
             )
         try:
             _write_session_info(workdir / "diagnostics" / "session_info.txt", warnings)
+            _write_session_info(workdir / "diagnostics" / "python_session_info.txt", warnings)
         except Exception as exc:  # noqa: BLE001
             warnings.append(f"session_info export skipped: {exc}")
         payload = {
@@ -1006,10 +1089,22 @@ def main() -> int:
             "status": status,
             "warnings": warnings,
             "errors": errors,
+            "scientific_caveats": list(dict.fromkeys(scientific_caveats)),
+            "operational_risks": [],
             "python": sys.executable,
         }
         _write_json(diagnostics / "engine_status.json", payload)
-        import pandas as pd
+        pd.DataFrame(
+            [
+                {
+                    "engine": "Hmsc-HPC",
+                    "caveat": f"caveat_{i + 1}",
+                    "control": "Read Hmsc-HPC standard tables, reports and diagnostics before ecological interpretation.",
+                    "note": note,
+                }
+                for i, note in enumerate(list(dict.fromkeys(scientific_caveats)))
+            ]
+        ).to_csv(workdir / "diagnostics" / "scientific_caveats.csv", index=False)
 
         pd.DataFrame(
             [{"engine": "Hmsc-HPC", "status": status, "message": "; ".join(warnings + errors)}]

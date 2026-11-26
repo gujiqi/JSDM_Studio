@@ -20,7 +20,7 @@ jsdmw_available_engines <- function() {
       label = "CPU pyhmsc / HDF5 HMSC workflow",
       language = "R + Python + TensorFlow",
       package = "pyhmsc / hmsc-hpc source",
-      best_for = c("CPU Python-native HMSC", "HDF5 posterior files", "traits", "phylogenetic covariance or Newick", "iid and spatial_full random intercepts", "Hmsc-style S1-S7 output folder"),
+      best_for = c("CPU Python-native HMSC", "HDF5 posterior files", "traits", "Newick or taxonomy-derived phylogeny", "iid and spatial_full random intercepts", "Hmsc-style S1-S7 output folder"),
       response_types = c("probit/binary", "poisson/count", "normal/continuous"),
       native_statuses = c("fitted", "model_defined", "check_failed", "fit_failed"),
       status = "CPU workflow; GPU/Slurm not exposed"

@@ -48,13 +48,13 @@ make_long_format <- function(Y, X) {
 write_engine_guide <- function(case_dir, case_id, title) {
   guide <- data.frame(
     engine = c(
-      rep("Hmsc", 6), rep("Hmsc-HPC", 7), rep("jSDM", 7), rep("GJAM", 9),
+      rep("Hmsc", 7), rep("Hmsc-HPC", 8), rep("jSDM", 7), rep("GJAM", 9),
       rep("spOccupancy", 9), rep("sjSDM", 5), rep("boral", 9)
     ),
     ui_upload_slot = c(
       "Y.csv - response matrix", "XData.csv - environmental predictors", "TrData.csv - traits / response attributes",
-      "studyDesign.csv - grouping / random-effect design", "coordinates.csv - spatial coordinates", "phylogeny / taxonomy file",
-      "Y.csv", "XData.csv", "traits.csv", "studyDesign.csv", "coordinates.csv", "phylo_cov.csv", "newdata.csv",
+      "studyDesign.csv - grouping / random-effect design", "coordinates.csv - spatial coordinates", "phylogeny / taxonomy file", "phylogeny / taxonomy file",
+      "Y.csv", "XData.csv", "traits.csv", "studyDesign.csv", "coordinates.csv", "taxonomy.csv", "phylo_tree.nwk", "newdata.csv",
       "Y.csv", "XData.csv", "trait_data.csv", "long_format.csv", "trials.csv", "newdata.csv", "prediction_ids.csv",
       "Y.csv", "XData.csv", "typeNames.csv", "specByTrait.csv", "traitTypes.csv", "effort.csv", "newdata.csv", "holdoutIndex.csv", "censor.csv",
       "y.csv", "occ.covs.csv", "det.covs.csv", "coords.csv", "species.csv", "integrated_sources.csv", "newdata.csv", "newcoords.csv", "folds.csv",
@@ -62,8 +62,8 @@ write_engine_guide <- function(case_dir, case_id, title) {
       "Y.csv", "XData.csv", "traits.csv", "row.ids.csv", "ranef.ids.csv", "distmat.csv", "offset.csv", "newdata.csv", "trial.size.csv"
     ),
     file_to_upload = c(
-      "01_Hmsc/Y.csv", "01_Hmsc/XData.csv", "01_Hmsc/TrData.csv", "01_Hmsc/studyDesign.csv", "01_Hmsc/coordinates.csv", "01_Hmsc/phylogeny.nwk",
-      "02_Hmsc-HPC/Y.csv", "02_Hmsc-HPC/XData.csv", "02_Hmsc-HPC/traits.csv", "02_Hmsc-HPC/studyDesign.csv", "02_Hmsc-HPC/coordinates.csv", "02_Hmsc-HPC/phylo_cov.csv", "02_Hmsc-HPC/newdata.csv",
+      "01_Hmsc/Y.csv", "01_Hmsc/XData.csv", "01_Hmsc/TrData.csv", "01_Hmsc/studyDesign.csv", "01_Hmsc/coordinates.csv", "01_Hmsc/phylogeny.nwk", "01_Hmsc/taxonomy.csv",
+      "02_Hmsc-HPC/Y.csv", "02_Hmsc-HPC/XData.csv", "02_Hmsc-HPC/traits.csv", "02_Hmsc-HPC/studyDesign.csv", "02_Hmsc-HPC/coordinates.csv", "02_Hmsc-HPC/taxonomy.csv", "02_Hmsc-HPC/phylo_tree.nwk", "02_Hmsc-HPC/newdata.csv",
       "03_jSDM/Y.csv", "03_jSDM/XData.csv", "03_jSDM/trait_data.csv", "03_jSDM/long_format.csv", "03_jSDM/trials.csv", "03_jSDM/newdata.csv", "03_jSDM/prediction_ids.csv",
       "04_GJAM/Y.csv", "04_GJAM/XData.csv", "04_GJAM/typeNames.csv", "04_GJAM/specByTrait.csv", "04_GJAM/traitTypes.csv", "04_GJAM/effort.csv", "04_GJAM/newdata.csv", "04_GJAM/holdoutIndex.csv", "04_GJAM/censor.csv",
       "05_spOccupancy/y.csv", "05_spOccupancy/occ.covs.csv", "05_spOccupancy/det.covs.csv", "05_spOccupancy/coords.csv", "05_spOccupancy/species.csv", "05_spOccupancy/integrated_sources.csv", "05_spOccupancy/newdata.csv", "05_spOccupancy/newcoords.csv", "05_spOccupancy/folds.csv",
@@ -71,8 +71,8 @@ write_engine_guide <- function(case_dir, case_id, title) {
       "07_boral/Y.csv", "07_boral/XData.csv", "07_boral/traits.csv", "07_boral/row.ids.csv", "07_boral/ranef.ids.csv", "07_boral/distmat.csv", "07_boral/offset.csv", "07_boral/newdata.csv", "07_boral/trial.size.csv"
     ),
     required_for_default = c(
-      TRUE, TRUE, FALSE, FALSE, FALSE, FALSE,
       TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE,
+      TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
       TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE,
       TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
       TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
@@ -81,8 +81,8 @@ write_engine_guide <- function(case_dir, case_id, title) {
     ),
     note = c(
       "Use Y occurrence for probit.", "Predictors are standardized and include substrate factor.", "Enable Use TrData / traits before using this file.",
-      "Use random effect mode = sample and grouping column = plot.", "Use only for spatial random effect modes.", "Use only if phylogeny is enabled.",
-      "Use occurrence/probit-compatible Y.", "Predictors for Hmsc-HPC.", "Optional traits.", "Optional random-effect design.", "Optional spatial input.", "Optional phylogenetic covariance.", "Optional prediction data.",
+      "Use random effect mode = sample and grouping column = plot.", "Use only for spatial random effect modes.", "Newick tree option; species tips must match Y columns.", "Taxonomy rank-table alternative; JSDM Studio derives the species correlation matrix internally.",
+      "Use occurrence/probit-compatible Y.", "Predictors for Hmsc-HPC.", "Optional traits.", "Optional random-effect design.", "Optional spatial input.", "Optional taxonomy rank-table input; the species matrix is derived internally.", "Optional Newick tree alternative.", "Optional prediction data.",
       "Default binomial_probit uses Y/X; traits optional.", "Site predictors.", "Enable traits if used.", "Only for long-format branch.", "Only for binomial_logit branch.", "Optional prediction data.", "Optional prediction ID filter.",
       "Use PA typeNames.", "Predictors.", "Upload for response types.", "Optional trait conversion.", "Optional trait types.", "Optional effort/offset information.", "Optional prediction data.", "Optional holdout rows.", "Leave unused unless censoring is enabled.",
       "Replicated detection/non-detection matrix.", "Occurrence covariates.", "Detection covariates.", "Coordinates.", "Species metadata.", "Optional integrated model metadata.", "Optional prediction covariates.", "Optional prediction coordinates.", "Optional folds.",
@@ -127,16 +127,29 @@ for (case_id in names(cases)) {
   trial <- read_case_csv(case_id, "trial.size.csv")
   species <- colnames(Y)
   sites <- rownames(Y)
+  taxonomy <- data.frame(
+    taxon_id = species,
+    kingdom = "Synthetic",
+    phylum = "BookCase",
+    class = "ExampleClass",
+    order = paste0("Order_", rep(seq_len(3), length.out = length(species))),
+    family = paste0("Family_", rep(seq_len(4), length.out = length(species))),
+    genus = sub("_.*$", "", species),
+    species = species,
+    stringsAsFactors = FALSE
+  )
+  taxonomy$genus[!nzchar(taxonomy$genus) | taxonomy$genus == species] <- paste0("Genus_", seq_along(species))[!nzchar(taxonomy$genus) | taxonomy$genus == species]
 
   common <- file.path(case_dir, "00_common_inputs")
   dir.create(common, recursive = TRUE, showWarnings = FALSE)
   for (f in c("Y_occurrence.csv", "Y_count.csv", "Y_normal.csv", "XData.csv", "traits.csv",
-              "studyDesign.csv", "coordinates.csv", "phylogeny.nwk", "phylo_cov.csv",
+              "studyDesign.csv", "coordinates.csv", "phylogeny.nwk",
               "newdata.csv", "newcoords.csv", "folds.csv", "trial.size.csv", "offset.csv",
               "row.ids.csv", "ranef.ids.csv", "distmat.csv", "spOccupancy_y_detection.csv",
               "occ.covs.csv", "det.covs.csv")) {
     copy_file(file.path(src, f), file.path(common, f))
   }
+  write_csv(taxonomy, file.path(common, "taxonomy.csv"), row.names = FALSE)
 
   hmsc <- file.path(case_dir, "01_Hmsc")
   write_csv(Y, file.path(hmsc, "Y.csv"))
@@ -145,16 +158,16 @@ for (case_id in names(cases)) {
   write_csv(study, file.path(hmsc, "studyDesign.csv"))
   write_csv(coords, file.path(hmsc, "coordinates.csv"))
   copy_file(file.path(src, "phylogeny.nwk"), file.path(hmsc, "phylogeny.nwk"))
-  copy_file(file.path(src, "phylo_cov.csv"), file.path(hmsc, "phylo_cov.csv"))
+  write_csv(taxonomy, file.path(hmsc, "taxonomy.csv"), row.names = FALSE)
 
   hpc <- file.path(case_dir, "02_Hmsc-HPC")
-  for (nm in c("Y.csv", "XData.csv", "traits.csv", "studyDesign.csv", "coordinates.csv", "phylo_cov.csv", "newdata.csv")) dir.create(hpc, recursive = TRUE, showWarnings = FALSE)
   write_csv(Y, file.path(hpc, "Y.csv"))
   write_csv(X, file.path(hpc, "XData.csv"))
   write_csv(Tr, file.path(hpc, "traits.csv"))
   write_csv(study, file.path(hpc, "studyDesign.csv"))
   write_csv(coords, file.path(hpc, "coordinates.csv"))
-  copy_file(file.path(src, "phylo_cov.csv"), file.path(hpc, "phylo_cov.csv"))
+  write_csv(taxonomy, file.path(hpc, "taxonomy.csv"), row.names = FALSE)
+  copy_file(file.path(src, "phylogeny.nwk"), file.path(hpc, "phylo_tree.nwk"))
   write_csv(newdata, file.path(hpc, "newdata.csv"))
 
   jsdm <- file.path(case_dir, "03_jSDM")

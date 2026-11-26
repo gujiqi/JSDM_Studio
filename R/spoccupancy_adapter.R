@@ -36,8 +36,10 @@ validate_spoccupancy_full <- function(y = NULL, occ = NULL, det = NULL, coords =
                                       NNGP = FALSE, n.neighbors = 15, k.fold = 0, svc.cols = "",
                                       occ.formula = "~ 1", det.formula = "~ 1", formula = "~ 1",
                                       data_structure = "single-species replicated") {
-  ok <- TRUE
-  msg <- character()
+  msg <- c(studio_row_order_issue(y, occ, "occ.covs.csv"),
+           studio_row_order_issue(y, coords, "coords.csv"),
+           studio_row_order_issue(y, det, "det.covs.csv"))
+  ok <- !length(msg)
   if (!(model_type %in% c(spocc_implemented_models, "sfMsPGOcc", "lfJSDM", "sfJSDM",
                           "tPGOcc", "stPGOcc", "tMsPGOcc", "stMsPGOcc",
                           "svcPGBinom", "svcTPGBinom", "svcTPGOcc", "svcMsPGOcc", "svcTMsPGOcc",
@@ -46,12 +48,18 @@ validate_spoccupancy_full <- function(y = NULL, occ = NULL, det = NULL, coords =
     msg <- c(msg, paste0("Unknown spOccupancy model function: ", model_type))
   }
   if (!(model_type %in% spocc_implemented_models)) {
-    msg <- c(msg, paste0(model_type, " is exposed in the UI but not yet enabled for automatic real fitting in this safe adapter. The adapter will fail with a real diagnostic instead of pretending success. Implemented real fits: ", paste(spocc_implemented_models, collapse = ", "), "."))
+    ok <- FALSE
+    msg <- c(msg, paste0(model_type, " is not available for fitting in JSDM Studio. Supported functions: ",
+                        paste(spocc_implemented_models, collapse = ", "), "."))
   }
   if (is.null(y)) {
     ok <- FALSE
     msg <- c(msg, "y.csv is required.")
   } else {
+    if (model_type %in% c("PGOcc", "spPGOcc", "svcPGOcc") && ncol(y) < 2L) {
+      ok <- FALSE
+      msg <- c(msg, "Single-species occupancy needs at least two visit columns, not one incidence value per site.")
+    }
     ycheck <- suppressWarnings(as.matrix(as.data.frame(y, check.names = FALSE)))
     suppressWarnings(storage.mode(ycheck) <- "numeric")
     if (any(is.na(ycheck) & !is.na(as.matrix(y)))) {
@@ -98,11 +106,36 @@ validate_spoccupancy_full <- function(y = NULL, occ = NULL, det = NULL, coords =
     } else if (ncol(coords) < 2) {
       ok <- FALSE
       msg <- c(msg, "coords.csv must contain at least two coordinate columns.")
+    } else {
+      xy <- as.data.frame(coords[, seq_len(2), drop = FALSE], check.names = FALSE)
+      for (cc in names(xy)) xy[[cc]] <- suppressWarnings(as.numeric(xy[[cc]]))
+      if (any(!is.finite(as.matrix(xy)))) {
+        ok <- FALSE
+        msg <- c(msg, "coords.csv first two coordinate columns must be numeric and finite.")
+      } else if (any(duplicated(xy))) {
+        ok <- FALSE
+        msg <- c(msg, "coords.csv contains exact duplicate coordinate rows. Remove duplicate locations or aggregate visits before fitting a spatial spOccupancy model.")
+      }
     }
   }
   if (model_type %in% spocc_integrated_models && is.null(integrated)) {
     ok <- FALSE
     msg <- c(msg, paste0(model_type, " requires integrated_sources.csv with at least source and prefix columns."))
+  }
+  if (!is.null(newdata) && model_type %in% c(spocc_spatial_models, spocc_lf_models)) {
+    if (is.null(newcoords) || nrow(newcoords) != nrow(newdata) || ncol(newcoords) < 2L) {
+      ok <- FALSE
+      msg <- c(msg, "Spatial prediction needs newcoords.csv with two coordinate columns and one row per newdata.csv row.")
+    } else {
+      order_issue <- studio_row_order_issue(newdata, newcoords, "newcoords.csv")
+      ok <- ok && !length(order_issue)
+      msg <- c(msg, order_issue)
+      xy <- suppressWarnings(matrix(as.numeric(as.matrix(newcoords[, 1:2, drop = FALSE])), ncol = 2L))
+      if (any(!is.finite(xy))) {
+        ok <- FALSE
+        msg <- c(msg, "Prediction coordinates must be finite and use the training coordinate system.")
+      }
+    }
   }
   total <- as.integer(n.batch) * as.integer(batch.length)
   if (!is.finite(total) || total < 10) msg <- c(msg, "Very small MCMC settings are for software checks only; publication analyses need much larger samples.")
@@ -125,7 +158,10 @@ validate_spoccupancy_full <- function(y = NULL, occ = NULL, det = NULL, coords =
   if (model_type %in% spocc_svc_models && !nzchar(trimws(svc.cols))) {
     msg <- c(msg, "SVC model selected but svc.cols is empty; the adapter will use the first occurrence design column.")
   }
-  if (as.integer(k.fold) < 0) { ok <- FALSE; msg <- c(msg, "k.fold must be >= 0.") }
+  if (as.integer(k.fold) != 0L) {
+    ok <- FALSE
+    msg <- c(msg, "Native spOccupancy cross-validation is not connected in this workflow. Use a separate validation analysis.")
+  }
   if (length(msg) == 0) msg <- "spOccupancy data and settings check passed."
   list(ok = ok, messages = msg)
 }
@@ -138,9 +174,13 @@ write_spoccupancy_reproducible_script <- function(outdir) {
     "args <- commandArgs(trailingOnly = FALSE)",
     "file_arg <- '--file='",
     "script_arg <- args[startsWith(args, file_arg)]",
-    "if (length(script_arg) > 0) setwd(dirname(dirname(normalizePath(sub(file_arg, '', script_arg[[1]]), winslash='/', mustWork=FALSE))))",
+    "if (length(script_arg) > 0) {",
+    "  script_path <- sub(file_arg, '', script_arg[[1]])",
+    "  if (!file.exists(script_path)) script_path <- gsub('~+~', ' ', script_path, fixed = TRUE)",
+    "  setwd(dirname(dirname(normalizePath(script_path, winslash = '/', mustWork = TRUE))))",
+    "}",
     "for (d in c('models','samples','tables','predictions','plots','diagnostics','standard','report','results','workflow_scripts','spatial','model_assessment')) dir.create(d, recursive=TRUE, showWarnings=FALSE)",
-    "`%||%` <- function(x, y) if (is.null(x) || length(x) == 0 || (length(x) == 1 && is.na(x))) y else x",
+    "`%||%` <- function(x, y) if (is.null(x) || length(x) == 0 || (is.atomic(x) && length(x) == 1L && is.na(x))) y else x",
     "as_bool <- function(x, default=FALSE) { if (is.null(x) || length(x)==0 || is.na(x)) return(default); if (is.logical(x)) return(isTRUE(x)); tolower(as.character(x)) %in% c('true','t','1','yes','y') }",
     "as_num <- function(x, default) { z <- suppressWarnings(as.numeric(x)); if (!length(z) || !is.finite(z[1])) default else z[1] }",
     "as_int <- function(x, default) as.integer(round(as_num(x, default)))",
@@ -167,7 +207,16 @@ write_spoccupancy_reproducible_script <- function(outdir) {
     "int_priors <- function(n.data, p.occ=2, p.det=2) { list(beta.normal=list(rep(0,p.occ), rep(2.72,p.occ)), alpha.normal=list(rep(list(rep(0,p.det)), n.data), rep(list(rep(2.72,p.det)), n.data))) }",
     "summarize_samples <- function(x) { m <- tryCatch(as.matrix(x), error=function(e) NULL); if (is.null(m)) return(data.frame(parameter=NA_character_, mean=NA_real_, sd=NA_real_, q025=NA_real_, q50=NA_real_, q975=NA_real_)); data.frame(parameter=colnames(m) %||% paste0('p', seq_len(ncol(m))), mean=colMeans(m, na.rm=TRUE), sd=apply(m,2,sd,na.rm=TRUE), q025=apply(m,2,quantile,0.025,na.rm=TRUE), q50=apply(m,2,quantile,0.5,na.rm=TRUE), q975=apply(m,2,quantile,0.975,na.rm=TRUE), row.names=NULL) }",
     "write_any_csv <- function(x, path) { if (is.null(x)) return(FALSE); if (is.atomic(x) && length(dim(x)) > 2) x <- data.frame(index=seq_along(as.vector(x)), value=as.vector(x)); if (is.atomic(x) && is.null(dim(x))) x <- data.frame(name=names(x) %||% paste0('v', seq_along(x)), value=as.vector(x)); if (is.matrix(x) || is.data.frame(x)) write.csv(as.data.frame(x, check.names=FALSE), path) else { nms <- names(x) %||% paste0('item_', seq_along(x)); write.csv(data.frame(field=nms, value=vapply(x, function(z) paste(capture.output(str(z, max.level=1)), collapse=' '), character(1))), path, row.names=FALSE) }; TRUE }",
-    "std_pred <- function(y, psi=NULL) { yy <- as.vector(y); n <- length(yy); pred <- if (!is.null(psi)) as.vector(apply(as.matrix(psi), 2, mean, na.rm=TRUE)) else rep(NA_real_, n); if (length(pred) != n) pred <- rep(NA_real_, n); data.frame(engine='spOccupancy', site_id=seq_len(n), response_id='occupancy', observed=yy, predicted_mean=pred, predicted_lower=NA_real_, predicted_upper=NA_real_) }",
+    "std_pred <- function(y, psi=NULL) {",
+    "  ym <- as.matrix(y); sites <- rownames(ym); species <- colnames(ym); ds <- dim(psi)",
+    "  out <- expand.grid(site_id=sites, response_id=species, KEEP.OUT.ATTRS=FALSE, stringsAsFactors=FALSE)",
+    "  out$engine <- 'spOccupancy'; out$observed <- as.vector(ym); out$observed_type <- 'any_visit_detected'",
+    "  out$prediction_scale <- 'occupancy_probability'; out$predicted_mean <- out$predicted_lower <- out$predicted_upper <- NA_real_",
+    "  draws <- if (length(ds) == 3L && identical(ds[2:3], c(ncol(ym), nrow(ym)))) matrix(aperm(psi, c(1,3,2)), nrow=ds[1]) else if (length(ds) == 2L && ds[2] == length(ym)) as.matrix(psi) else NULL",
+    "  if (!is.null(draws)) { out$predicted_mean <- colMeans(draws, na.rm=TRUE); out$predicted_lower <- apply(draws,2,quantile,0.025,na.rm=TRUE); out$predicted_upper <- apply(draws,2,quantile,0.975,na.rm=TRUE) }",
+    "  out",
+    "}",
+    "one_species_detected <- function(y, species='occupancy') { y <- as.matrix(y); v <- apply(y, 1, function(row) if (all(is.na(row))) NA_real_ else max(row, na.rm=TRUE)); matrix(v, ncol=1L, dimnames=list(rownames(y) %||% as.character(seq_len(nrow(y))), species)) }",
     "try({ if (!requireNamespace('yaml', quietly=TRUE)) stop('yaml is required.'); cfg <- yaml::read_yaml('used_config.yml') }, silent=FALSE)",
     "tryCatch({",
     "  if (!requireNamespace('spOccupancy', quietly=TRUE)) stop('Package spOccupancy is required for real fitting.', call.=FALSE)",
@@ -178,9 +227,9 @@ write_spoccupancy_reproducible_script <- function(outdir) {
     "  model_type <- cfg$model$model_type %||% 'PGOcc'; implemented <- c('PGOcc','spPGOcc','msPGOcc','spMsPGOcc','lfMsPGOcc','intPGOcc','svcPGOcc'); if (!(model_type %in% implemented)) stop(paste0(model_type, ' is not enabled for automatic real fitting in this adapter.'), call.=FALSE)",
     "  occ.form <- expand_formula(cfg$model$occ.formula %||% '~ 1', occ); det.form <- expand_formula(cfg$model$det.formula %||% '~ 1', data.frame(obs=1)); n.samples <- as_int(cfg$mcmc$n.batch, 1000) * as_int(cfg$mcmc$batch.length, 25); n.burn <- as_int(cfg$mcmc$n.burn, max(1, floor(0.1*n.samples))); n.thin <- as_int(cfg$mcmc$n.thin, 1); n.chains <- as_int(cfg$mcmc$n.chains, 1); n.report <- as_int(cfg$mcmc$n.report, 100); n.threads <- as_int(cfg$mcmc$n.omp.threads, 1)",
     "  call_args <- list(); y_for_standard <- NULL",
-    "  if (model_type %in% c('PGOcc','spPGOcc','svcPGOcc')) { y <- make_single_y(y_raw); J <- nrow(y); R <- ncol(y); det <- make_det(det_raw, J, R, cfg$model$det.formula %||% '~ 1'); data <- list(y=y, occ.covs=occ, det.covs=det); z <- apply(y,1,max,na.rm=TRUE); z[!is.finite(z)] <- 1; y_for_standard <- y; if (model_type %in% c('spPGOcc','svcPGOcc')) data$coords <- coords; if (model_type == 'PGOcc') { call_args <- list(occ.formula=occ.form, det.formula=det.form, data=data, inits=list(z=z), priors=single_priors(FALSE), n.samples=n.samples, n.burn=n.burn, n.thin=n.thin, n.chains=n.chains, n.omp.threads=n.threads, verbose=as_bool(cfg$mcmc$verbose, FALSE), n.report=n.report) } else if (model_type == 'spPGOcc') { call_args <- list(occ.formula=occ.form, det.formula=det.form, data=data, inits=list(z=z, sigma.sq=1, phi=max_dist(coords)), priors=single_priors(TRUE, FALSE, coords), tuning=list(phi=0.5), cov.model=cfg$spatial_latent_svc$cov.model %||% 'exponential', NNGP=as_bool(cfg$spatial_latent_svc$NNGP, TRUE), n.neighbors=as_int(cfg$spatial_latent_svc$n.neighbors, 15), search.type=cfg$spatial_latent_svc$search.type %||% 'cb', n.batch=as_int(cfg$mcmc$n.batch, 1000), batch.length=as_int(cfg$mcmc$batch.length, 25), accept.rate=as_num(cfg$mcmc$accept.rate, 0.43), n.burn=n.burn, n.thin=n.thin, n.chains=n.chains, n.omp.threads=n.threads, verbose=as_bool(cfg$mcmc$verbose, FALSE), n.report=n.report) } else { Xtmp <- model.matrix(occ.form, occ); svc.cols <- parse_svc_cols(cfg$spatial_latent_svc$svc.cols %||% '', Xtmp); call_args <- list(occ.formula=occ.form, det.formula=det.form, data=data, inits=list(z=z, sigma.sq=rep(1,length(svc.cols)), phi=rep(max_dist(coords), length(svc.cols))), priors=single_priors(TRUE, TRUE, coords), tuning=list(phi=rep(0.5, length(svc.cols))), svc.cols=svc.cols, cov.model=cfg$spatial_latent_svc$cov.model %||% 'exponential', NNGP=as_bool(cfg$spatial_latent_svc$NNGP, TRUE), n.neighbors=as_int(cfg$spatial_latent_svc$n.neighbors, 15), search.type=cfg$spatial_latent_svc$search.type %||% 'cb', n.batch=as_int(cfg$mcmc$n.batch, 1000), batch.length=as_int(cfg$mcmc$batch.length, 25), accept.rate=as_num(cfg$mcmc$accept.rate, 0.43), n.burn=n.burn, n.thin=n.thin, n.chains=n.chains, n.omp.threads=n.threads, verbose=as_bool(cfg$mcmc$verbose, FALSE), n.report=n.report) } }",
-    "  if (model_type %in% c('msPGOcc','spMsPGOcc','lfMsPGOcc')) { y <- make_multi_y(y_raw, species_raw); J <- dim(y)[2]; R <- dim(y)[3]; det <- make_det(det_raw, J, R, cfg$model$det.formula %||% '~ 1'); data <- list(y=y, occ.covs=occ, det.covs=det); z <- apply(y,c(1,2),max,na.rm=TRUE); z[!is.finite(z)] <- 1; y_for_standard <- apply(y, c(2,3), max, na.rm=TRUE); if (model_type %in% c('spMsPGOcc','lfMsPGOcc')) data$coords <- coords; if (model_type == 'msPGOcc') { call_args <- list(occ.formula=occ.form, det.formula=det.form, data=data, inits=list(z=z), priors=multi_priors(FALSE), n.samples=n.samples, n.burn=n.burn, n.thin=n.thin, n.chains=n.chains, n.omp.threads=n.threads, verbose=as_bool(cfg$mcmc$verbose, FALSE), n.report=n.report) } else if (model_type == 'spMsPGOcc') { S <- dim(y)[1]; call_args <- list(occ.formula=occ.form, det.formula=det.form, data=data, inits=list(z=z, sigma.sq=rep(1,S), phi=rep(max_dist(coords),S)), priors=multi_priors(TRUE, coords), tuning=list(phi=rep(0.5,S)), cov.model=cfg$spatial_latent_svc$cov.model %||% 'exponential', NNGP=as_bool(cfg$spatial_latent_svc$NNGP, TRUE), n.neighbors=as_int(cfg$spatial_latent_svc$n.neighbors, 15), search.type=cfg$spatial_latent_svc$search.type %||% 'cb', n.batch=as_int(cfg$mcmc$n.batch, 1000), batch.length=as_int(cfg$mcmc$batch.length, 25), accept.rate=as_num(cfg$mcmc$accept.rate, 0.43), n.burn=n.burn, n.thin=n.thin, n.chains=n.chains, n.omp.threads=n.threads, verbose=as_bool(cfg$mcmc$verbose, FALSE), n.report=n.report) } else { call_args <- list(occ.formula=occ.form, det.formula=det.form, data=data, inits=list(z=z), priors=multi_priors(FALSE), n.factors=as_int(cfg$spatial_latent_svc$n.factors, 2), n.samples=n.samples, n.burn=n.burn, n.thin=n.thin, n.chains=n.chains, n.omp.threads=n.threads, verbose=as_bool(cfg$mcmc$verbose, FALSE), n.report=n.report) } }",
-    "  if (model_type == 'intPGOcc') { idata <- make_integrated_data(y_raw, occ, det_raw, src_raw); pdet <- 2; det.forms <- rep(list(det.form), length(idata$y)); z <- apply(do.call(cbind, lapply(idata$y, function(m) apply(m,1,max,na.rm=TRUE))), 1, max); z[!is.finite(z)] <- 1; data <- list(y=idata$y, occ.covs=idata$occ.covs, det.covs=idata$det.covs, sites=idata$sites); call_args <- list(occ.formula=occ.form, det.formula=det.forms, data=data, inits=list(z=z), priors=int_priors(length(idata$y), ncol(model.matrix(occ.form, occ)), pdet), n.samples=n.samples, n.burn=n.burn, n.thin=n.thin, n.chains=n.chains, n.omp.threads=n.threads, verbose=as_bool(cfg$mcmc$verbose, FALSE), n.report=n.report); y_for_standard <- do.call(cbind, idata$y) }",
+    "  if (model_type %in% c('PGOcc','spPGOcc','svcPGOcc')) { y <- make_single_y(y_raw); J <- nrow(y); R <- ncol(y); det <- make_det(det_raw, J, R, cfg$model$det.formula %||% '~ 1'); data <- list(y=y, occ.covs=occ, det.covs=det); z <- apply(y,1,max,na.rm=TRUE); z[!is.finite(z)] <- 1; y_for_standard <- one_species_detected(y); if (model_type %in% c('spPGOcc','svcPGOcc')) data$coords <- coords; if (model_type == 'PGOcc') { call_args <- list(occ.formula=occ.form, det.formula=det.form, data=data, inits=list(z=z), priors=single_priors(FALSE), n.samples=n.samples, n.burn=n.burn, n.thin=n.thin, n.chains=n.chains, n.omp.threads=n.threads, verbose=as_bool(cfg$mcmc$verbose, FALSE), n.report=n.report) } else if (model_type == 'spPGOcc') { call_args <- list(occ.formula=occ.form, det.formula=det.form, data=data, inits=list(z=z, sigma.sq=1, phi=max_dist(coords)), priors=single_priors(TRUE, FALSE, coords), tuning=list(phi=0.5), cov.model=cfg$spatial_latent_svc$cov.model %||% 'exponential', NNGP=as_bool(cfg$spatial_latent_svc$NNGP, TRUE), n.neighbors=as_int(cfg$spatial_latent_svc$n.neighbors, 15), search.type=cfg$spatial_latent_svc$search.type %||% 'cb', n.batch=as_int(cfg$mcmc$n.batch, 1000), batch.length=as_int(cfg$mcmc$batch.length, 25), accept.rate=as_num(cfg$mcmc$accept.rate, 0.43), n.burn=n.burn, n.thin=n.thin, n.chains=n.chains, n.omp.threads=n.threads, verbose=as_bool(cfg$mcmc$verbose, FALSE), n.report=n.report) } else { Xtmp <- model.matrix(occ.form, occ); svc.cols <- parse_svc_cols(cfg$spatial_latent_svc$svc.cols %||% '', Xtmp); call_args <- list(occ.formula=occ.form, det.formula=det.form, data=data, inits=list(z=z, sigma.sq=rep(1,length(svc.cols)), phi=rep(max_dist(coords), length(svc.cols))), priors=single_priors(TRUE, TRUE, coords), tuning=list(phi=rep(0.5, length(svc.cols))), svc.cols=svc.cols, cov.model=cfg$spatial_latent_svc$cov.model %||% 'exponential', NNGP=as_bool(cfg$spatial_latent_svc$NNGP, TRUE), n.neighbors=as_int(cfg$spatial_latent_svc$n.neighbors, 15), search.type=cfg$spatial_latent_svc$search.type %||% 'cb', n.batch=as_int(cfg$mcmc$n.batch, 1000), batch.length=as_int(cfg$mcmc$batch.length, 25), accept.rate=as_num(cfg$mcmc$accept.rate, 0.43), n.burn=n.burn, n.thin=n.thin, n.chains=n.chains, n.omp.threads=n.threads, verbose=as_bool(cfg$mcmc$verbose, FALSE), n.report=n.report) } }",
+    "  if (model_type %in% c('msPGOcc','spMsPGOcc','lfMsPGOcc')) { y <- make_multi_y(y_raw, species_raw); J <- dim(y)[2]; R <- dim(y)[3]; det <- make_det(det_raw, J, R, cfg$model$det.formula %||% '~ 1'); data <- list(y=y, occ.covs=occ, det.covs=det); z <- apply(y,c(1,2),max,na.rm=TRUE); z[!is.finite(z)] <- 1; y_for_standard <- t(apply(y, c(1,2), max, na.rm=TRUE)); y_for_standard[!is.finite(y_for_standard)] <- NA_real_; rownames(y_for_standard) <- dimnames(y)[[2]] %||% as.character(seq_len(J)); colnames(y_for_standard) <- dimnames(y)[[1]] %||% paste0('sp_', seq_len(dim(y)[1])); if (model_type %in% c('spMsPGOcc','lfMsPGOcc')) data$coords <- coords; if (model_type == 'msPGOcc') { call_args <- list(occ.formula=occ.form, det.formula=det.form, data=data, inits=list(z=z), priors=multi_priors(FALSE), n.samples=n.samples, n.burn=n.burn, n.thin=n.thin, n.chains=n.chains, n.omp.threads=n.threads, verbose=as_bool(cfg$mcmc$verbose, FALSE), n.report=n.report) } else if (model_type == 'spMsPGOcc') { S <- dim(y)[1]; call_args <- list(occ.formula=occ.form, det.formula=det.form, data=data, inits=list(z=z, sigma.sq=rep(1,S), phi=rep(max_dist(coords),S)), priors=multi_priors(TRUE, coords), tuning=list(phi=rep(0.5,S)), cov.model=cfg$spatial_latent_svc$cov.model %||% 'exponential', NNGP=as_bool(cfg$spatial_latent_svc$NNGP, TRUE), n.neighbors=as_int(cfg$spatial_latent_svc$n.neighbors, 15), search.type=cfg$spatial_latent_svc$search.type %||% 'cb', n.batch=as_int(cfg$mcmc$n.batch, 1000), batch.length=as_int(cfg$mcmc$batch.length, 25), accept.rate=as_num(cfg$mcmc$accept.rate, 0.43), n.burn=n.burn, n.thin=n.thin, n.chains=n.chains, n.omp.threads=n.threads, verbose=as_bool(cfg$mcmc$verbose, FALSE), n.report=n.report) } else { call_args <- list(occ.formula=occ.form, det.formula=det.form, data=data, inits=list(z=z), priors=multi_priors(FALSE), n.factors=as_int(cfg$spatial_latent_svc$n.factors, 2), n.samples=n.samples, n.burn=n.burn, n.thin=n.thin, n.chains=n.chains, n.omp.threads=n.threads, verbose=as_bool(cfg$mcmc$verbose, FALSE), n.report=n.report) } }",
+    "  if (model_type == 'intPGOcc') { idata <- make_integrated_data(y_raw, occ, det_raw, src_raw); pdet <- 2; det.forms <- rep(list(det.form), length(idata$y)); z <- apply(do.call(cbind, lapply(idata$y, function(m) apply(m,1,max,na.rm=TRUE))), 1, max); z[!is.finite(z)] <- 1; data <- list(y=idata$y, occ.covs=idata$occ.covs, det.covs=idata$det.covs, sites=idata$sites); call_args <- list(occ.formula=occ.form, det.formula=det.forms, data=data, inits=list(z=z), priors=int_priors(length(idata$y), ncol(model.matrix(occ.form, occ)), pdet), n.samples=n.samples, n.burn=n.burn, n.thin=n.thin, n.chains=n.chains, n.omp.threads=n.threads, verbose=as_bool(cfg$mcmc$verbose, FALSE), n.report=n.report); y_for_standard <- one_species_detected(do.call(cbind, idata$y)) }",
     "  saveRDS(call_args, file.path('models','spOccupancy_call_args.rds')); write.csv(data.frame(model_type=model_type, n.samples=n.samples, n.burn=n.burn, n.thin=n.thin, n.chains=n.chains), file.path('tables','model_settings_used.csv'), row.names=FALSE)",
     "  fun <- get(model_type, asNamespace('spOccupancy')); output <- do.call(fun, call_args)",
     "  if (as_bool(cfg$validation_prediction_outputs$save_model, TRUE)) saveRDS(output, file.path('models','spOccupancy_model.rds'))",
@@ -189,7 +238,7 @@ write_spoccupancy_reproducible_script <- function(outdir) {
     "  wa <- NULL; if (as_bool(cfg$validation_prediction_outputs$waicOcc, TRUE)) wa <- safe_step('waicOcc', spOccupancy::waicOcc(output)); if (!is.null(wa)) { write_any_csv(wa, file.path('model_assessment','waicOcc_results.csv')); write_any_csv(wa, file.path('tables','waicOcc_results.csv')) }",
     "  pp <- NULL; if (as_bool(cfg$validation_prediction_outputs$ppcOcc, FALSE)) pp <- safe_step('ppcOcc', spOccupancy::ppcOcc(output, fit.stat='freeman-tukey', group=1)); if (!is.null(pp)) { saveRDS(pp, file.path('model_assessment','ppcOcc.rds')); write_any_csv(pp$fit.y, file.path('model_assessment','ppc_fit_y.csv')); write_any_csv(pp$fit.y.rep, file.path('model_assessment','ppc_fit_y_rep.csv')) }",
     "  fit <- NULL; if (as_bool(cfg$validation_prediction_outputs$fitted, TRUE)) fit <- safe_step('fitted', fitted(output)); if (!is.null(fit)) { saveRDS(fit, file.path('results','fitted_values.rds')); for (nm in names(fit)) write_any_csv(fit[[nm]], file.path('tables', paste0('fitted_', nm, '.csv'))) }",
-    "  pred <- NULL; if (as_bool(cfg$validation_prediction_outputs$predict, TRUE)) { if (identical(model_type, 'lfMsPGOcc') && (is.null(newdata) || is.null(newcoords))) { append_warning('predict.lfMsPGOcc skipped because it requires newdata.csv and newcoords.csv for genuinely new locations; fitted psi samples were saved instead') } else pred <- safe_step('predict', { nd <- newdata %||% occ; X0 <- model.matrix(occ.form, nd); if (model_type %in% c('spPGOcc','spMsPGOcc','lfMsPGOcc','svcPGOcc')) { c0 <- newcoords %||% coords; if (model_type == 'svcPGOcc') predict(output, X.0=X0, coords.0=c0, weights.0=rep(1,nrow(X0)), verbose=FALSE, n.report=n.report) else if (model_type == 'lfMsPGOcc') predict(output, X.0=X0, coords.0=c0) else predict(output, X.0=X0, coords.0=c0, verbose=FALSE, n.report=n.report) } else predict(output, X.0=X0) }) }; if (!is.null(pred)) { saveRDS(pred, file.path('predictions','spOccupancy_predict.rds')); for (nm in names(pred)) write_any_csv(pred[[nm]], file.path('predictions', paste0(nm, '.csv'))) }",
+    "  pred <- NULL; if (as_bool(cfg$validation_prediction_outputs$predict, TRUE) && !is.null(newdata)) { pred <- safe_step('predict', { X0 <- model.matrix(occ.form, newdata); if (model_type %in% c('spPGOcc','spMsPGOcc','lfMsPGOcc','svcPGOcc')) { if (is.null(newcoords) || nrow(newcoords) != nrow(X0)) stop('Spatial prediction requires matching newcoords.csv.', call.=FALSE); c0 <- newcoords; if (model_type == 'svcPGOcc') predict(output, X.0=X0, coords.0=c0, weights.0=rep(1,nrow(X0)), verbose=FALSE, n.report=n.report) else if (model_type == 'lfMsPGOcc') predict(output, X.0=X0, coords.0=c0) else predict(output, X.0=X0, coords.0=c0, verbose=FALSE, n.report=n.report) } else predict(output, X.0=X0) }) }; if (!is.null(pred)) { saveRDS(pred, file.path('predictions','spOccupancy_predict.rds')); for (nm in names(pred)) write_any_csv(pred[[nm]], file.path('predictions', paste0(nm, '.csv'))) }",
     "  if (!is.null(output$theta.samples)) write.csv(summarize_samples(output$theta.samples), file.path('spatial','spatial_theta_summary.csv'), row.names=FALSE); if (!is.null(output$w.samples)) saveRDS(output$w.samples, file.path('spatial','spatial_or_factor_w_samples.rds')); if (!is.null(output$lambda.samples)) write.csv(summarize_samples(output$lambda.samples), file.path('tables','latent_factor_loadings.csv'), row.names=FALSE)",
     "  beta_eff <- read.csv(file.path('tables','summary_beta.csv'), check.names=FALSE); effects <- data.frame(engine='spOccupancy', response_id='occupancy', predictor=beta_eff$parameter, direction=ifelse(beta_eff$mean>0,'positive',ifelse(beta_eff$mean<0,'negative','zero')), estimate=beta_eff$mean, lower=beta_eff$q025, upper=beta_eff$q975, notes=paste(model_type, 'posterior mean'), stringsAsFactors=FALSE); write.csv(effects, file.path('standard','effects_long.csv'), row.names=FALSE)",
     "  psi <- output$psi.samples %||% NULL; write.csv(std_pred(y_for_standard, psi), file.path('standard','predictions_long.csv'), row.names=FALSE); write.csv(data.frame(engine='spOccupancy', response_1=NA_character_, response_2=NA_character_, association_type=ifelse(!is.null(output$lambda.samples),'latent_factor','not_available'), estimate=NA_real_, comparable_level='model_specific'), file.path('standard','associations_long.csv'), row.names=FALSE)",

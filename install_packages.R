@@ -1,6 +1,10 @@
 # install_packages.R
 # Install or repair R packages used by JSDM Studio.
 
+if (.Platform$OS.type == "windows") {
+  Sys.unsetenv(c("LC_ALL", "LC_COLLATE", "LC_CTYPE", "LC_MONETARY", "LC_TIME", "LANG", "LANGUAGE"))
+}
+
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 
 core_packages <- c(

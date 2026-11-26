@@ -208,6 +208,18 @@ write_case <- function(case_id, title, source_note, Y_count, XData, traits, stud
     phylo_cov <- diag(length(colnames(Y_count)))
     dimnames(phylo_cov) <- list(colnames(Y_count), colnames(Y_count))
   }
+  taxonomy <- data.frame(
+    taxon_id = colnames(Y_count),
+    kingdom = if (grepl("fungi", title, ignore.case = TRUE)) "Fungi" else if (grepl("bird", title, ignore.case = TRUE)) "Animalia" else "Plantae",
+    phylum = if (grepl("fungi", title, ignore.case = TRUE)) "Basidiomycota" else if (grepl("bird", title, ignore.case = TRUE)) "Chordata" else "Tracheophyta",
+    class = if (grepl("fungi", title, ignore.case = TRUE)) "Agaricomycetes" else if (grepl("bird", title, ignore.case = TRUE)) "Aves" else "Magnoliopsida",
+    order = paste0("Order_", rep(seq_len(3), length.out = ncol(Y_count))),
+    family = paste0("Family_", rep(seq_len(4), length.out = ncol(Y_count))),
+    genus = sub("_.*$", "", colnames(Y_count)),
+    species = colnames(Y_count),
+    stringsAsFactors = FALSE
+  )
+  taxonomy$genus[!nzchar(taxonomy$genus) | taxonomy$genus == colnames(Y_count)] <- paste0("Genus_", seq_len(ncol(Y_count)))[!nzchar(taxonomy$genus) | taxonomy$genus == colnames(Y_count)]
 
   folds <- data.frame(site_id = rownames(Y_count), fold = rep(seq_len(3), length.out = nrow(Y_count)))
   trial <- as.data.frame(matrix(1, nrow = nrow(Y_count), ncol = ncol(Y_count), dimnames = dimnames(Y_count)))
@@ -232,7 +244,7 @@ write_case <- function(case_id, title, source_note, Y_count, XData, traits, stud
   write_table(studyDesign, file.path(outdir, "studyDesign.csv"))
   write_table(coordinates, file.path(outdir, "coordinates.csv"))
   writeLines(phylogeny_nwk, file.path(outdir, "phylogeny.nwk"), useBytes = TRUE)
-  write_table(phylo_cov, file.path(outdir, "phylo_cov.csv"))
+  write.csv(taxonomy, file.path(outdir, "taxonomy.csv"), row.names = FALSE)
   write_table(newdata, file.path(outdir, "newdata.csv"))
   write_table(newcoords, file.path(outdir, "newcoords.csv"))
   write.csv(folds, file.path(outdir, "folds.csv"), row.names = FALSE)
@@ -247,6 +259,7 @@ write_case <- function(case_id, title, source_note, Y_count, XData, traits, stud
 
   write_table(round(truth$latent, 5), file.path(outdir, "truth", "latent_occurrence.csv"))
   write_table(round(truth$prob, 5), file.path(outdir, "truth", "occurrence_probability.csv"))
+  write_table(phylo_cov, file.path(outdir, "truth", "derived_phylogeny_correlation_reference.csv"))
   write.csv(truth$effects, file.path(outdir, "truth", "true_environment_effects.csv"), row.names = FALSE)
   write.csv(truth$associations, file.path(outdir, "truth", "true_species_associations.csv"), row.names = FALSE)
   write.csv(truth$predictions, file.path(outdir, "truth", "true_predictions.csv"), row.names = FALSE)

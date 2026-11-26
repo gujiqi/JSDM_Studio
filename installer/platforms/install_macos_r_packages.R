@@ -1,0 +1,11 @@
+args <- commandArgs(trailingOnly = TRUE)
+stopifnot(length(args) == 1L, identical(Sys.info()[["sysname"]], "Darwin"))
+archives <- list.files(args[[1]], pattern = "\\.tgz$", full.names = TRUE)
+library_dir <- Sys.getenv("R_LIBS_USER")
+stopifnot(length(archives) > 0L, dir.exists(library_dir))
+
+.libPaths(library_dir, include.site = FALSE)
+utils::install.packages(archives, lib = library_dir, repos = NULL, type = "binary")
+script_path <- sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1])
+if (!file.exists(script_path)) script_path <- gsub("~+~", " ", script_path, fixed = TRUE)
+source(file.path(dirname(script_path), "verify_posix_runtime.R"))

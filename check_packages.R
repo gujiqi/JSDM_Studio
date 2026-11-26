@@ -1,6 +1,10 @@
 # check_packages.R
 # Called by launchers and troubleshooting scripts.
 
+if (.Platform$OS.type == "windows") {
+  Sys.unsetenv(c("LC_ALL", "LC_COLLATE", "LC_CTYPE", "LC_MONETARY", "LC_TIME", "LANG", "LANGUAGE"))
+}
+
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 
 required <- c(

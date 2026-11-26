@@ -1,0 +1,352 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <symbol id="response" viewBox="0 0 40 40">
+    <rect x="4" y="6" width="32" height="28" rx="4" fill="#f5faff" stroke="#285b87" stroke-width="1.8"/>
+    <path d="M5 11a4 4 0 0 1 4-4h22a4 4 0 0 1 4 4v4H5Z" fill="#b7d8f3"/>
+    <path d="M6 23h9v10H9a3 3 0 0 1-3-3Zm9-8h10v8H15Zm10 8h10v7a3 3 0 0 1-3 3h-7Z" fill="#d6eafa"/>
+    <path d="M5 15h30M5 23h30M15 15v18m10-18v18" fill="none" stroke="#46759a" stroke-width="1.65"/>
+  </symbol>
+  <symbol id="predictor" viewBox="0 0 40 40">
+    <rect x="4" y="7" width="32" height="26" rx="4" fill="#e9f5fa" stroke="#396575" stroke-width="1.8"/>
+    <circle cx="28" cy="14" r="3.2" fill="#eec981" stroke="#9d7634" stroke-width="1.4"/>
+    <path d="M5 26 14 15l7 8 5-3 9 7v2a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3Z" fill="#b8ddc9"/>
+    <path d="m5 26 9-11 7 8 5-3 9 7M14 32q4-6 18-7" fill="none" stroke="#396f62" stroke-width="1.8"/>
+  </symbol>
+  <symbol id="trait" viewBox="0 0 40 40">
+    <path d="M7 30c-4-11 3-19 18-21 2 14-5 23-16 23Z" fill="#d7e9c7" stroke="#4e713a" stroke-width="1.8"/>
+    <path d="m5 35 15-19M12 26l-1-6m4 2 6-1" fill="none" stroke="#4e713a" stroke-width="1.8"/>
+    <rect x="28" y="6" width="7" height="29" rx="2" fill="#fcf0d4" stroke="#897045" stroke-width="1.65"/>
+    <path d="M30 12h4m-3 6h3m-4 6h4m-3 6h3" fill="none" stroke="#897045" stroke-width="1.5"/>
+  </symbol>
+  <symbol id="species" viewBox="0 0 40 40">
+    <path d="m13 24-9-9 12 3c1-6 6-9 11-8 4 1 6 3 7 6l4 2-5 2c-1 7-8 12-16 11-4 0-7-3-7-6Z" fill="#d7e7d0" stroke="#546d43" stroke-width="1.8"/>
+    <path d="M16 20q8-6 13-3-2 8-12 10Z" fill="#a9c797" stroke="#546d43" stroke-width="1.5"/>
+    <path d="m20 31-2 4m8-5 1 4" fill="none" stroke="#546d43" stroke-width="1.8"/>
+    <circle cx="29" cy="15.7" r="1.25" fill="#405436"/>
+  </symbol>
+  <symbol id="group" viewBox="0 0 40 40">
+    <path d="M5 7h26a3 3 0 0 1 3 3v19H5a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3Z" fill="#f6eae1" stroke="#8d624b" stroke-width="1.7"/>
+    <rect x="8" y="13" width="29" height="20" rx="3" fill="#fffcf8" stroke="#8d624b" stroke-width="1.8"/>
+    <rect x="12" y="17" width="8" height="12" rx="2" fill="#e5b7a1"/>
+    <rect x="24" y="17" width="9" height="12" rx="2" fill="#f1d9bd"/>
+    <path d="M14 21h4m-4 4h4m8-4h5m-5 4h5" fill="none" stroke="#8d624b" stroke-width="1.5"/>
+  </symbol>
+  <symbol id="coordinate" viewBox="0 0 40 40">
+    <path d="m4 12 10-4 10 4 11-4v23l-11 4-10-4-10 4Z" fill="#edf7fa" stroke="#346b81" stroke-width="1.75"/>
+    <path d="m14 9 10 4v21l-10-4Z" fill="#cbe9e8"/>
+    <path d="M14 9v22M24 13v21m-20-6q9-9 18-4l13-6" fill="none" stroke="#6c9eac" stroke-width="1.5"/>
+    <path d="M31 24c-2.5-3.1-7-7.5-7-11a7 7 0 0 1 14 0c0 3.5-4.5 7.9-7 11Z" fill="#74b5ab" stroke="#265f59" stroke-width="1.8"/>
+    <circle cx="31" cy="13" r="2.5" fill="#f7fffd" stroke="#265f59" stroke-width="1.35"/>
+  </symbol>
+  <symbol id="newcoords" viewBox="0 0 40 40">
+    <path d="m4 12 10-4 10 4 11-4v23l-11 4-10-4-10 4Z" fill="#edf7fa" stroke="#346b81" stroke-width="1.75"/>
+    <path d="m14 9 10 4v21l-10-4Z" fill="#cbe9e8"/>
+    <path d="M14 9v22M24 13v21m-19-8q9-7 18-4l11-5" fill="none" stroke="#6c9eac" stroke-width="1.5"/>
+    <circle cx="31" cy="11" r="7" fill="#deebe4" stroke="#2a695e" stroke-width="1.8"/>
+    <path d="M31 8v6m-3-3h6" fill="none" stroke="#2a695e" stroke-width="1.8"/>
+  </symbol>
+  <symbol id="spatial" viewBox="0 0 40 40">
+    <path d="m4 12 10-4 11 4 11-4v22l-11 5-11-4-10 4Z" fill="#e4f2f2" stroke="#356c76" stroke-width="1.8"/>
+    <path d="M6 23c7-10 9-9 14-7s8 2 14-2M6 29c7-10 12-9 17-7s7-1 11-3M16 28q6-6 12-2l6-2" fill="none" stroke="#5d9c9f" stroke-width="1.65"/>
+    <path d="M14 8v23m11-19v23" fill="none" stroke="#356c76" stroke-opacity=".5" stroke-width="1.4"/>
+  </symbol>
+  <symbol id="distance" viewBox="0 0 40 40">
+    <path d="M5 27 27 5a3 3 0 0 1 4 0l4 4a3 3 0 0 1 0 4L13 35a3 3 0 0 1-4 0l-4-4a3 3 0 0 1 0-4Z" fill="#d9edf5" stroke="#336e83" stroke-width="1.8"/>
+    <path d="m9 24 4 4m1-9 3 3m2-8 4 4m1-9 3 3" fill="none" stroke="#336e83" stroke-width="1.8"/>
+  </symbol>
+  <symbol id="phylogeny" viewBox="0 0 40 40">
+    <path d="M5 20h8m0-10v20m0-20h10m-10 20h10m0-25v10m0 10v10M23 5h9m-9 10h9m-9 10h9m-9 10h9" fill="none" stroke="#644f89" stroke-width="2.1"/>
+    <circle cx="5" cy="20" r="2.6" fill="#f7f2fd" stroke="#644f89" stroke-width="1.5"/>
+    <g fill="#cfbfeb" stroke="#644f89" stroke-width="1.55">
+      <circle cx="33" cy="5" r="3.1"/><circle cx="33" cy="15" r="3.1"/>
+      <circle cx="33" cy="25" r="3.1"/><circle cx="33" cy="35" r="3.1"/>
+    </g>
+  </symbol>
+  <symbol id="fold" viewBox="0 0 40 40">
+    <rect x="4" y="8" width="32" height="24" rx="3" fill="#fdf6e6" stroke="#8b6935" stroke-width="1.8"/>
+    <path d="M15 9v22m10-22v22" stroke="#8b6935" stroke-width="1.65"/>
+    <path d="M16 10h8v20h-8Z" fill="#ebcc92"/>
+    <path d="m17 20 2 2 4-5" fill="none" stroke="#785c35" stroke-width="1.6"/>
+  </symbol>
+  <symbol id="visits" viewBox="0 0 40 40">
+    <rect x="5" y="8" width="30" height="26" rx="4" fill="#fffaf3" stroke="#8e644b" stroke-width="1.8"/>
+    <path d="M6 12a3 3 0 0 1 3-3h22a3 3 0 0 1 3 3v5H6Z" fill="#eec5af"/>
+    <path d="M12 5v7m16-7v7M6 17h28" fill="none" stroke="#8e644b" stroke-width="1.8"/>
+    <path d="m10 24 2.5 2.5 4-5m4.5 2.5 2.5 2.5 4-5" fill="none" stroke="#8e644b" stroke-width="1.75"/>
+  </symbol>
+  <symbol id="occurrence" viewBox="0 0 40 40">
+    <path d="m5 26 15-8 15 8-15 9Z" fill="#d5e9df" stroke="#386d60" stroke-width="1.8"/>
+    <path d="M20 25s-8-8-8-13a8 8 0 0 1 16 0c0 5-8 13-8 13Z" fill="#88b9a9" stroke="#386d60" stroke-width="1.8"/>
+    <path d="m16.5 12 2.4 2.4 4.6-5" fill="none" stroke="#fff" stroke-width="2"/>
+  </symbol>
+  <symbol id="detection" viewBox="0 0 40 40">
+    <path d="m5 23 5-13h5l3 10h4l3-10h5l5 13" fill="#efdee8" stroke="#80556d" stroke-width="1.8"/>
+    <path d="M11 10V7h5v6m8 0V7h5v3" fill="none" stroke="#80556d" stroke-width="1.8"/>
+    <circle cx="12" cy="25" r="8" fill="#f4e7ee" stroke="#80556d" stroke-width="1.8"/>
+    <circle cx="28" cy="25" r="8" fill="#f4e7ee" stroke="#80556d" stroke-width="1.8"/>
+    <circle cx="12" cy="25" r="4.3" fill="#bb91ac" stroke="#80556d" stroke-width="1.5"/>
+    <circle cx="28" cy="25" r="4.3" fill="#bb91ac" stroke="#80556d" stroke-width="1.5"/>
+    <path d="M20 22v5M11 24l1-1m15 1 1-1" stroke="#fff" stroke-width="1.45"/>
+  </symbol>
+  <symbol id="heldout" viewBox="0 0 40 40">
+    <path d="M10 5h14l7 7v21a3 3 0 0 1-3 3H10a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3Z" fill="#edf6fc" stroke="#3b6a8f" stroke-width="1.8"/>
+    <path d="M24 5v7h7M12 16h12m-12 6h8" fill="none" stroke="#3b6a8f" stroke-width="1.6"/>
+    <circle cx="29" cy="28" r="7" fill="#d2e8da" stroke="#487760" stroke-width="1.7"/>
+    <path d="m26 28 2 2 4-4" fill="none" stroke="#487760" stroke-width="1.7"/>
+  </symbol>
+  <symbol id="newdata" viewBox="0 0 40 40">
+    <path d="M10 5h14l7 7v21a3 3 0 0 1-3 3H10a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3Z" fill="#eff8f9" stroke="#3d7180" stroke-width="1.8"/>
+    <path d="M24 5v7h7M11 25l6-8 5 6 3-2 4 4" fill="#cbe9da" stroke="#4f8273" stroke-width="1.55"/>
+    <circle cx="29" cy="29" r="7" fill="#daeee6" stroke="#3d7164" stroke-width="1.7"/>
+    <path d="M29 26v6m-3-3h6" stroke="#3d7164" stroke-width="1.7"/>
+  </symbol>
+  <symbol id="prediction" viewBox="0 0 40 40">
+    <path d="M6 7v26h29" fill="none" stroke="#466d82" stroke-width="1.8"/>
+    <path d="M21 21c5-7 7-12 14-14v14c-4 0-8 2-14 4Z" fill="#cae5ef"/>
+    <path d="m7 28 7-8c2-3 5-3 7 1" fill="none" stroke="#397c89" stroke-width="2.2"/>
+    <path d="M21 21c5-5 8-7 14-7" fill="none" stroke="#397c89" stroke-width="2.2" stroke-dasharray="2.6 3"/>
+    <circle cx="14" cy="20" r="2" fill="#397c89"/>
+  </symbol>
+  <symbol id="family" viewBox="0 0 40 40">
+    <path d="M5 32h31M8 32V23h5v9m4 0V16h5v16m4 0V20h5v12" fill="#f2d9a8" stroke="#916a34" stroke-width="1.85"/>
+    <path d="M6 21c7 0 8-12 15-12s8 11 14 11" fill="none" stroke="#aa7840" stroke-width="1.8"/>
+  </symbol>
+  <symbol id="mixed" viewBox="0 0 40 40">
+    <path d="M4 31h32" stroke="#916a34" stroke-width="1.8"/>
+    <rect x="5" y="20" width="6" height="11" rx="1.4" fill="#efca92" stroke="#916a34" stroke-width="1.6"/>
+    <path d="M14 21h9m-4.5-4.5v9" stroke="#916a34" stroke-width="1.8"/>
+    <path d="m25 22 4-6 4 2 3-7" fill="none" stroke="#916a34" stroke-width="1.8"/>
+    <circle cx="36" cy="11" r="1.7" fill="#b18348"/>
+  </symbol>
+  <symbol id="formula" viewBox="0 0 40 40">
+    <rect x="5" y="7" width="30" height="26" rx="4" fill="#ebedf9" stroke="#58618d" stroke-width="1.8"/>
+    <path d="M18 15c-2-2-5-1-6 2l-3 12m1-9h8m4-1 8 7m0-7-8 7" fill="none" stroke="#58618d" stroke-width="2"/>
+  </symbol>
+  <symbol id="model" viewBox="0 0 40 40">
+    <path d="m20 4 8 4v9l-8 4-8-4V8Zm-9 14 8 4v9l-8 4-8-4v-9Zm18 0 8 4v9l-8 4-8-4v-9Z" fill="#dde1f2" stroke="#57638a" stroke-width="1.8"/>
+    <path d="m12 8 8 4 8-4m-8 4v9M3 22l8 4 8-4m-8 4v9m10-13 8 4 8-4m-8 4v9" fill="none" stroke="#57638a" stroke-width="1.65"/>
+  </symbol>
+  <symbol id="latent" viewBox="0 0 40 40">
+    <path d="M10 20 30 8M10 20h20m-20 0 20 12" fill="none" stroke="#8469a2" stroke-width="1.9"/>
+    <circle cx="10" cy="20" r="5.5" fill="#ae98cf" stroke="#624881" stroke-width="1.9"/>
+    <g fill="#f9f4ff" stroke="#624881" stroke-width="1.8">
+      <rect x="26.5" y="4.5" width="7" height="7" rx="1.6"/>
+      <rect x="26.5" y="16.5" width="7" height="7" rx="1.6"/>
+      <rect x="26.5" y="28.5" width="7" height="7" rx="1.6"/>
+    </g>
+  </symbol>
+  <symbol id="reduced-rank" viewBox="0 0 40 40">
+    <rect x="4" y="7" width="18" height="26" rx="3" fill="#f5f5fc" stroke="#535e8c" stroke-width="1.8"/>
+    <path d="M5 8h5v24H7a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2Z" fill="#c5cdea"/>
+    <path d="M10 8v24m6-24v24M5 15h16M5 25h16" stroke="#6976a2" stroke-width="1.35"/>
+    <path d="M24.5 20h5.5m-2.5-2.5L30 20l-2.5 2.5" fill="none" stroke="#535e8c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="32" y="10" width="5" height="20" rx="1.5" fill="#a7b6df" stroke="#535e8c" stroke-width="1.5"/>
+  </symbol>
+  <symbol id="predictor-matrix" viewBox="0 0 40 40">
+    <path d="M9 5h13l8 8v19a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3Z"
+          fill="#f5fbf8" stroke="#407365" stroke-width="1.8"/>
+    <path d="M22 5v8h8" fill="#dceee7" stroke="#407365" stroke-width="1.7" stroke-linejoin="round"/>
+    <rect x="12" y="18" width="22" height="12" rx="2" fill="#c4e2d5" stroke="#407365" stroke-width="1.65"/>
+    <path d="M19 19v10m7-10v10m-13-5h20" fill="none" stroke="#407365" stroke-width="1.3"/>
+  </symbol>
+  <symbol id="rank-dimension" viewBox="0 0 40 40">
+    <path d="M6 10v23h28" fill="none" stroke="#665187" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"/>
+    <g stroke="#665187" stroke-width="1.55">
+      <rect x="11" y="19" width="5" height="10" rx="1.5" fill="#d7c9eb"/>
+      <rect x="20" y="13" width="5" height="16" rx="1.5" fill="#af9ecf"/>
+      <rect x="29" y="7" width="5" height="22" rx="1.5" fill="#f4effa" stroke-dasharray="2.2 2"/>
+    </g>
+  </symbol>
+  <symbol id="mcmc" viewBox="0 0 40 40">
+    <rect x="4" y="7" width="32" height="26" rx="4" fill="#f0eaf7" stroke="#725d8d" stroke-width="1.8"/>
+    <path d="m7 22 4-8 4 13 4-10 4 5 4-7 4 10 3-6" fill="none" stroke="#7657a2" stroke-width="1.85"/>
+    <path d="m7 25 4-3 4 2 4-5 4 8 4-5 4 3 3-7" fill="none" stroke="#ad91c8" stroke-width="1.4"/>
+  </symbol>
+  <symbol id="chain" viewBox="0 0 40 40">
+    <rect x="4" y="6" width="32" height="28" rx="4" fill="#f9f5fd" stroke="#664f88" stroke-width="1.8"/>
+    <path d="M5 20h30" stroke="#c7b8de" stroke-width="1.4"/>
+    <g fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m8 15 4-4 4 5 5-6 4 5 3-3 4 2" stroke="#7855a1"/>
+      <path d="m8 28 4-2 4 3 4-6 4 5 4-4 4 3" stroke="#437889"/>
+    </g>
+  </symbol>
+  <symbol id="parallel" viewBox="0 0 40 40">
+    <rect x="8" y="8" width="24" height="24" rx="4" fill="#d8e9f8" stroke="#426dc0" stroke-width="1.8"/>
+    <rect x="14" y="14" width="12" height="12" rx="2" fill="#96bce4" stroke="#426dc0" stroke-width="1.6"/>
+    <path d="M14 4v4m6-4v4m6-4v4m-12 24v4m6-4v4m6-4v4M4 14h4m-4 6h4m-4 6h4m24-12h4m-4 6h4m-4 6h4" fill="none" stroke="#426dc0" stroke-width="1.7"/>
+  </symbol>
+  <symbol id="seed" viewBox="0 0 40 40">
+    <rect x="8" y="8" width="24" height="24" rx="5" transform="rotate(-12 20 20)" fill="#faedcf" stroke="#906a37" stroke-width="1.8"/>
+    <path d="M15 14h.1m9-.1h.1m-5 6h.1m-4 6h.1m10-.1h.1" stroke="#906a37" stroke-width="3.6"/>
+  </symbol>
+  <symbol id="prior" viewBox="0 0 40 40">
+    <path d="M5 31c7 0 9-17 15-17s8 17 15 17Z" fill="#ddcdeb"/>
+    <path d="M5 31c7 0 9-17 15-17s8 17 15 17M5 31h30m-15-2V12" fill="none" stroke="#775b94" stroke-width="1.8"/>
+    <path d="M12 34h16" stroke="#ad95c5" stroke-width="1.8"/>
+  </symbol>
+  <symbol id="start" viewBox="0 0 40 40">
+    <path d="M11 7v28m0-26c8-8 12 7 21 1l-2 12c-9 6-11-8-19-1Z" fill="#eac4b3" stroke="#91654c" stroke-width="1.8"/>
+    <path d="M7 35h15" stroke="#91654c" stroke-width="1.8"/>
+  </symbol>
+  <symbol id="tuning" viewBox="0 0 40 40">
+    <path d="M6 10h28M6 20h28M6 30h28" stroke="#6571a1" stroke-width="1.8"/>
+    <g fill="#dce3f5" stroke="#6571a1" stroke-width="1.8">
+      <circle cx="14" cy="10" r="4"/><circle cx="26" cy="20" r="4"/><circle cx="17" cy="30" r="4"/>
+    </g>
+  </symbol>
+  <symbol id="effect" viewBox="0 0 40 40">
+    <path d="M5 20h30m-24 0V9m9 11v12m9-12V7" fill="none" stroke="#925372" stroke-width="1.85"/>
+    <path d="M8 10h6v10H8Zm9 10h6v11h-6Zm9-12h6v12h-6Z" fill="#e8bfd1" stroke="#925372" stroke-width="1.55"/>
+  </symbol>
+  <symbol id="scale" viewBox="0 0 40 40">
+    <rect x="5" y="8" width="30" height="24" rx="4" fill="#f4f8fa" stroke="#4b6d79" stroke-width="1.8"/>
+    <path d="M20 11v18" stroke="#90aeb9" stroke-width="1.5" stroke-dasharray="1.7 2"/>
+    <path d="M10 20h20m-17-3-3 3 3 3m14-6 3 3-3 3" fill="none" stroke="#467083" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="20" cy="20" r="3" fill="#a3c8d5" stroke="#467083" stroke-width="1.5"/>
+  </symbol>
+  <symbol id="offset" viewBox="0 0 40 40">
+    <rect x="5" y="9" width="30" height="22" rx="4" fill="#fbf3ee" stroke="#875e49" stroke-width="1.8"/>
+    <path d="M11 20h9m-4.5-4.5v9m9.5-7h5m-5 5h5" fill="none" stroke="#875e49" stroke-width="1.9" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="association" viewBox="0 0 40 40">
+    <path d="m9 27 11-15 12 15Z" fill="none" stroke="#88546e" stroke-width="2.05"/>
+    <g fill="#e4c2d4" stroke="#88546e" stroke-width="1.8">
+      <circle cx="9" cy="27" r="5"/><circle cx="20" cy="12" r="6"/><circle cx="32" cy="27" r="5"/>
+    </g>
+  </symbol>
+  <symbol id="partition" viewBox="0 0 40 40">
+    <g fill="#e9bd77">
+      <rect x="5" y="7" width="30" height="6" rx="2"/>
+      <rect x="5" y="17" width="30" height="6" rx="2"/>
+      <rect x="5" y="27" width="30" height="6" rx="2"/>
+    </g>
+    <path d="M7 7h12v6H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Zm0 10h6v6H7a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2Zm0 10h17v6H7a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2Z" fill="#78ac97"/>
+    <path d="M19 7h9v6h-9Zm-6 10h12v6H13Zm11 10h6v6h-6Z" fill="#b9dce6"/>
+    <g fill="none" stroke="#3b6c60" stroke-width="1.45">
+      <rect x="5" y="7" width="30" height="6" rx="2"/>
+      <rect x="5" y="17" width="30" height="6" rx="2"/>
+      <rect x="5" y="27" width="30" height="6" rx="2"/>
+    </g>
+  </symbol>
+  <symbol id="order" viewBox="0 0 40 40">
+    <path d="M12 8v24m-5-5 5 5 5-5" fill="none" stroke="#4e6b79" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+    <g fill="#c8dbe2" stroke="#4e6b79" stroke-width="1.5">
+      <rect x="21" y="8" width="14" height="5" rx="1.5"/>
+      <rect x="21" y="17.5" width="11" height="5" rx="1.5"/>
+      <rect x="21" y="27" width="7" height="5" rx="1.5"/>
+    </g>
+  </symbol>
+  <symbol id="ordination" viewBox="0 0 40 40">
+    <path d="M6 7v27h29" fill="none" stroke="#55668d" stroke-width="1.8"/>
+    <ellipse cx="16" cy="23" rx="6.5" ry="4.5" transform="rotate(-25 16 23)" fill="#dde4f5"/>
+    <ellipse cx="28" cy="13" rx="6" ry="4" transform="rotate(-25 28 13)" fill="#d7e9ef"/>
+    <path d="M12 24h.1m5-.1h.1m1-4h.1m8-7h.1m4-3h.1m1 5h.1" stroke="#55668d" stroke-width="3.1"/>
+  </symbol>
+  <symbol id="diagnostic" viewBox="0 0 40 40">
+    <path d="m26 26 9 9" stroke="#376e71" stroke-width="4"/>
+    <circle cx="17" cy="17" r="12" fill="#e3f2ee" stroke="#376e71" stroke-width="1.9"/>
+    <path d="M8 17h5l3-6 3 12 3-6h4" fill="none" stroke="#4d897b" stroke-width="1.9"/>
+  </symbol>
+  <symbol id="accuracy" viewBox="0 0 40 40">
+    <path d="M5 29a15 15 0 1 1 30 0Z" fill="#e0edda" stroke="#58774a" stroke-width="1.8"/>
+    <path d="m20 26 8-9M10 24l2 1m2-9 1 2m5-5v2m10 9-2 1" fill="none" stroke="#58774a" stroke-width="1.8"/>
+    <circle cx="20" cy="26" r="2.2" fill="#58774a"/>
+  </symbol>
+  <symbol id="plot" viewBox="0 0 40 40">
+    <rect x="4" y="6" width="32" height="28" rx="4" fill="#ecf6f3" stroke="#46796d" stroke-width="1.8"/>
+    <path d="M10 12v16h20" fill="none" stroke="#46796d" stroke-width="1.6"/>
+    <path d="m10 25 7-6 5 2 7-8v14H10Z" fill="#c3e1d6"/>
+    <path d="m10 25 7-6 5 2 7-8" fill="none" stroke="#46796d" stroke-width="1.9"/>
+  </symbol>
+  <symbol id="report" viewBox="0 0 40 40">
+    <path d="M10 5h14l7 7v21a3 3 0 0 1-3 3H10a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3Z" fill="#edf2f5" stroke="#536d7b" stroke-width="1.8"/>
+    <path d="M24 5v7h7M12 16h12m-12 6h12m-12 6h8" fill="none" stroke="#536d7b" stroke-width="1.7"/>
+  </symbol>
+  <symbol id="save" viewBox="0 0 40 40">
+    <path d="M7 6h21l6 6v20a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V9a3 3 0 0 1 1-3Z" fill="#d9e8ec" stroke="#536f7b" stroke-width="1.8"/>
+    <path d="M12 7h15v10H12Zm0 18h16v9H12Z" fill="#f8fbfc" stroke="#536f7b" stroke-width="1.65"/>
+    <path d="M23 7v7m-8 15h10" stroke="#536f7b" stroke-width="1.6"/>
+  </symbol>
+  <symbol id="script" viewBox="0 0 40 40">
+    <path d="M10 5h14l7 7v21a3 3 0 0 1-3 3H10a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3Z" fill="#edf2f5" stroke="#536d7b" stroke-width="1.8"/>
+    <path d="M24 5v7h7m-15 7-4 4 4 4m6-8 4 4-4 4m-1-9-3 10" fill="none" stroke="#536d7b" stroke-width="1.6"/>
+  </symbol>
+  <symbol id="archive" viewBox="0 0 40 40">
+    <path d="m5 14 15-8 15 8v15l-15 8-15-8Z" fill="#f5e2d5" stroke="#916650" stroke-width="1.75"/>
+    <path d="m5 14 15 8 15-8m-15 8v15m-8-26 15 8v5" fill="none" stroke="#916650" stroke-width="1.75"/>
+  </symbol>
+  <symbol id="export" viewBox="0 0 40 40">
+    <path d="m5 17 15 6 15-6v12l-15 7-15-7Z" fill="#ebd1be" stroke="#956952" stroke-width="1.75"/>
+    <path d="m5 17 7-7 8 6 8-6 7 7-15 6Zm15 6v13" fill="#f6e8db" stroke="#956952" stroke-width="1.75"/>
+    <path d="M20 4v10m-3-3 3 3 3-3" fill="none" stroke="#956952" stroke-width="1.8"/>
+  </symbol>
+  <symbol id="folder" viewBox="0 0 40 40">
+    <path d="M5 12a3 3 0 0 1 3-3h8l4 4h12a3 3 0 0 1 3 3v15H5Z" fill="#d2e3f3" stroke="#54799b" stroke-width="1.8"/>
+    <path d="M6 19h28l-3 11a3 3 0 0 1-3 2H8a3 3 0 0 1-3-3Z" fill="#edf5fc" stroke="#54799b" stroke-width="1.8"/>
+  </symbol>
+  <symbol id="benchmark" viewBox="0 0 40 40">
+    <path d="M15 6h10m-8 0v10L7 30a3 3 0 0 0 3 4h20a3 3 0 0 0 3-4L23 16V6" fill="#f8f4fb" stroke="#725c8c" stroke-width="1.8"/>
+    <path d="M13 25h14l4 6q1 2-2 2H11q-3 0-2-2Z" fill="#d7c4e9"/>
+    <path d="M15 28h.1m6 2h.1m-3-7h.1" stroke="#725c8c" stroke-width="2.4"/>
+  </symbol>
+  <symbol id="compare" viewBox="0 0 40 40">
+    <rect x="4" y="8" width="32" height="24" rx="4" fill="#e9f4f0" stroke="#49796e" stroke-width="1.8"/>
+    <path d="M20 9v22m-11-8h5m13-6h5m-5 6h5" stroke="#49796e" stroke-width="1.7"/>
+    <path d="M8 13h8v6H8Zm16 12h9v3h-9Z" fill="#add2c6"/>
+  </symbol>
+  <symbol id="guide" viewBox="0 0 40 40">
+    <path d="M5 9q9-4 15 2 6-6 15-2v22q-9-4-15 2-6-6-15-2Z" fill="#e3e7f4" stroke="#59688c" stroke-width="1.8"/>
+    <path d="M20 11v22M9 14q4-1 7 1m-7 5q4-1 7 1m8-6q4-2 7-1m-7 7q4-2 7-1" fill="none" stroke="#7a88a9" stroke-width="1.5"/>
+  </symbol>
+  <symbol id="feedback" viewBox="0 0 40 40">
+    <path d="M9 7h22a4 4 0 0 1 4 4v14a4 4 0 0 1-4 4H17l-8 6v-6a4 4 0 0 1-4-4V11a4 4 0 0 1 4-4Z" fill="#f1dce8" stroke="#8c5e79" stroke-width="1.8"/>
+    <path d="M11 15h18m-18 6h12" stroke="#8c5e79" stroke-width="1.7"/>
+  </symbol>
+  <symbol id="update" viewBox="0 0 40 40">
+    <circle cx="20" cy="20" r="12" fill="#e4f2ec"/>
+    <path d="M7 18A13 13 0 0 1 31 13m0-6v7h-7m9 8A13 13 0 0 1 9 27m0 6v-7h7"
+          fill="none" stroke="#467b6c" stroke-width="2"/>
+    <path d="M20 26V14m-4 4 4-4 4 4" fill="none" stroke="#467b6c" stroke-width="1.8"/>
+  </symbol>
+  <symbol id="setting" viewBox="0 0 40 40">
+    <path d="m17 7 1-3h4l1 3 5 2 3-1 3 3-1 3 2 5 3 1v4l-3 1-2 5 1 3-3 3-3-1-5 2-1 3h-4l-1-3-5-2-3 1-3-3 1-3-2-5-3-1v-4l3-1 2-5-1-3 3-3 3 1Z"
+          transform="translate(2 -1) scale(.9)" fill="#e3ecef" stroke="#5e7784" stroke-width="2"/>
+    <circle cx="20" cy="19" r="6.4" fill="#fcfefe" stroke="#5e7784" stroke-width="1.8"/>
+  </symbol>
+  <symbol id="question" viewBox="0 0 40 40">
+    <path d="M35 18a15 13 0 0 1-15 13h-4l-8 5 1-8a15 13 0 0 1-4-10 15 13 0 0 1 30 0Z"
+          fill="#eaf0f4" stroke="#5b7484" stroke-width="1.8"/>
+    <path d="M16 15a4 4 0 1 1 6 3c-2 1-2 2-2 3m0 4h.1" fill="none" stroke="#5b7484" stroke-width="2"/>
+  </symbol>
+  <symbol id="log" viewBox="0 0 40 40">
+    <rect x="5" y="7" width="30" height="26" rx="4" fill="#edf2f5" stroke="#587482" stroke-width="1.8"/>
+    <path d="M11 14h.1m-.1 6h.1m-.1 6h.1" stroke="#587482" stroke-width="2.8"/>
+    <path d="M16 14h13m-13 6h13m-13 6h9" stroke="#587482" stroke-width="1.7"/>
+  </symbol>
+  <symbol id="upload" viewBox="0 0 40 40">
+    <path d="M9 23 7 21h26l-2 2 4 6v5H5v-5Z" fill="#d7e7f5" stroke="#477396" stroke-width="1.8"/>
+    <path d="M5 29h9l3 3h6l3-3h9" fill="none" stroke="#477396" stroke-width="1.65"/>
+    <path d="M20 23V6m-5 6 5-6 5 6" fill="none" stroke="#477396" stroke-width="2.2"/>
+  </symbol>
+  <symbol id="check" viewBox="0 0 40 40">
+    <rect x="8" y="8" width="24" height="27" rx="4" fill="#e7f1e4" stroke="#527957" stroke-width="1.8"/>
+    <rect x="14" y="5" width="12" height="7" rx="2" fill="#c0d7b7" stroke="#527957" stroke-width="1.7"/>
+    <path d="m13 22 4 4 10-10" fill="none" stroke="#527957" stroke-width="2.4"/>
+  </symbol>
+  <symbol id="run" viewBox="0 0 40 40">
+    <path d="m9 28 6-14 10 9 8-11" fill="none" stroke="#715d92" stroke-width="2"/>
+    <g fill="#e1d5ed" stroke="#715d92" stroke-width="1.8">
+      <circle cx="9" cy="28" r="4"/><circle cx="15" cy="14" r="4"/><circle cx="25" cy="23" r="4"/>
+    </g>
+    <path d="M26 11h8v8" fill="none" stroke="#715d92" stroke-width="2.2"/>
+  </symbol>
+  <symbol id="preview" viewBox="0 0 40 40">
+    <rect x="5" y="7" width="30" height="26" rx="4" fill="#ecf6f8" stroke="#467e8b" stroke-width="1.8"/>
+    <path d="M10 20s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z" fill="#cde6eb" stroke="#467e8b" stroke-width="1.7"/>
+    <circle cx="20" cy="20" r="3.4" fill="#477b87"/>
+  </symbol>
+  <symbol id="engine-sjsdm" viewBox="0 0 40 40">
+    <rect x="6" y="6" width="28" height="28" rx="4" fill="#eef8f5" stroke="#41786e" stroke-width="1.8"/>
+    <path d="M8 8h8v8H8Zm8 8h8v8h-8Zm8 8h8v8h-8Z" fill="#9dc8b9"/>
+    <path d="M15.5 7v26m9-26v26M7 15.5h26m-26 9h26" stroke="#61968b" stroke-width="1.55"/>
+  </symbol>
+</svg>

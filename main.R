@@ -2,6 +2,10 @@
 # Command-line HMSC workflow driven by config.yml.
 # Most users can use the Shiny GUI in app.R instead.
 
+if (.Platform$OS.type == "windows") {
+  Sys.unsetenv(c("LC_ALL", "LC_COLLATE", "LC_CTYPE", "LC_MONETARY", "LC_TIME", "LANG", "LANGUAGE"))
+}
+
 library(yaml)
 library(Hmsc)
 library(coda)

@@ -1,6 +1,10 @@
 # Synthetic branch-coverage audit suite for JSDM Studio workflows.
 # It reuses the Universal Benchmark data generator and the real engine adapters.
 
+if (.Platform$OS.type == "windows") {
+  Sys.unsetenv(c("LC_ALL", "LC_COLLATE", "LC_CTYPE", "LC_MONETARY", "LC_TIME", "LANG", "LANGUAGE"))
+}
+
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- "--file="
 script_arg <- args[startsWith(args, file_arg)]
@@ -19,6 +23,7 @@ load_runner_env <- function() {
   runner_path <- file.path(app_dir, "workflow_scripts", "universal_benchmark_runner.R")
   txt <- readLines(runner_path, warn = FALSE)
   txt <- txt[!grepl("^\\s*if \\(!interactive\\(\\)\\) main\\(\\)\\s*$", txt)]
+  txt <- txt[!grepl("^\\s*if \\(any\\(startsWith\\(commandArgs\\(trailingOnly = FALSE\\), \"--file=\"\\)\\)\\) main\\(\\)\\s*$", txt)]
   e <- new.env(parent = globalenv())
   eval(parse(text = paste(txt, collapse = "\n")), envir = e)
   e
@@ -44,6 +49,39 @@ write_pair <- function(x, outdir, filename, row.names = TRUE) {
 
 write_text_pair <- function(text, outdir, filename) {
   runner_env$write_text_pair(text, outdir, filename)
+}
+
+normalize_gjam_trait_types <- function(traits, traitTypes = NULL) {
+  if (is.null(traits) || !ncol(traits)) {
+    return(data.frame(trait = character(), typeName = character(), stringsAsFactors = FALSE))
+  }
+  trait_names <- names(traits)
+  inferred <- vapply(traits, function(z) {
+    if (is.numeric(z) || is.integer(z)) "CON" else "CAT"
+  }, character(1))
+  out <- data.frame(trait = trait_names, typeName = inferred, stringsAsFactors = FALSE)
+  if (is.null(traitTypes) || !nrow(traitTypes)) return(out)
+
+  cn <- tolower(names(traitTypes))
+  trait_idx <- which(cn %in% c("trait", "traits", "name", "variable", "column"))[1]
+  type_idx <- which(cn %in% c("typename", "typenames", "type", "types", "traittype", "trait_type"))[1]
+  if (is.na(type_idx)) type_idx <- ncol(traitTypes)
+  raw_types <- toupper(trimws(as.character(traitTypes[[type_idx]])))
+  valid <- c("PA", "DA", "CON", "CA", "OC", "CAT", "FC", "CC")
+
+  if (!is.na(trait_idx)) {
+    raw_traits <- trimws(as.character(traitTypes[[trait_idx]]))
+    hit <- match(trait_names, raw_traits)
+    mapped <- raw_types[hit]
+    ok <- !is.na(mapped) & mapped %in% valid
+    out$typeName[ok] <- mapped[ok]
+  } else {
+    n <- min(length(raw_types), length(trait_names))
+    mapped <- raw_types[seq_len(n)]
+    ok <- !is.na(mapped) & mapped %in% valid
+    out$typeName[seq_len(n)][ok] <- mapped[ok]
+  }
+  out
 }
 
 contract_dirs <- c("inputs", "data", "models", "tables", "results", "plots", "predictions",
@@ -89,8 +127,10 @@ finish_case <- function(engine, case_id, outdir, dat_case, started, notes = "") 
   if (!file.exists(file.path(outdir, "standard", "run_summary.csv"))) {
     app_env$write_standard_outputs(outdir, engine, st, Y = dat_case$Y, X = dat_case$X)
   }
-  runner_env$standardize_engine_synonyms(outdir, engine, dat_case)
+  # Build any missing contract files first. The richer engine-aware tables must
+  # be written last so placeholder contract tables cannot overwrite them.
   app_env$ensure_output_contract(outdir, engine, st, Y = dat_case$Y, X = dat_case$X)
+  runner_env$standardize_engine_synonyms(outdir, engine, dat_case)
   runner_env$fill_empty_dirs(outdir, engine)
   zipfile <- tryCatch(runner_env$make_zip_file(outdir), error = function(e) {
     writeLines(conditionMessage(e), file.path(outdir, "diagnostics", "zip_error.txt"))
@@ -172,7 +212,7 @@ run_hmsc_case <- function(root, case_id, dat, cfg, Y, notes = "") {
   write_pair(dat$traits, outdir, "TrData.csv")
   write_pair(dat$study, outdir, "studyDesign.csv")
   write_pair(dat$coords, outdir, "coordinates.csv")
-  write_pair(dat$phylo_cov, outdir, "phylo_cov.csv")
+  write_pair(dat$taxonomy, outdir, "taxonomy.csv")
   write_text_pair(dat$newick, outdir, "phylogeny.nwk")
   safe_yaml_write(cfg, file.path(outdir, "used_config.yml"))
   check <- app_env$validate_hmsc(dat_case$Y, dat_case$X,
@@ -225,8 +265,8 @@ run_hmschpc_case <- function(root, case_id, dat, cfg, Y, notes = "") {
     Y = dat_case$Y, X = dat_case$X,
     Tr = if (isTRUE(cfg$model$use_traits)) dat$traits else NULL,
     study = dat$study, coord = dat$coords,
-    phylo_cov = if (identical(cfg$model$phylogeny_mode, "covariance")) dat$phylo_cov else NULL,
-    phylo_tree_file = if (identical(cfg$model$phylogeny_mode, "newick")) file.path(outdir, "data", "phylogeny.nwk") else NULL,
+    taxonomy = if (identical(cfg$model$phylogeny_mode, "taxonomy")) dat$taxonomy else NULL,
+    phylo_tree_file = if (identical(cfg$model$phylogeny_mode, "newick")) file.path(outdir, "data", "phylo_tree.nwk") else NULL,
     newdata = dat$newdata,
     distribution = cfg$model$distribution,
     XFormula = cfg$model$XFormula,
@@ -269,8 +309,8 @@ run_hmschpc_case <- function(root, case_id, dat, cfg, Y, notes = "") {
       app_env$run_hmschpc_workflow(outdir, cfg, dat_case$Y, dat_case$X,
                                    Tr = if (isTRUE(cfg$model$use_traits)) dat$traits else NULL,
                                    study = dat$study, coord = dat$coords,
-                                   phylo_cov = if (identical(cfg$model$phylogeny_mode, "covariance")) dat$phylo_cov else NULL,
-                                   phylo_tree_file = if (identical(cfg$model$phylogeny_mode, "newick")) file.path(outdir, "data", "phylogeny.nwk") else NULL,
+                                   taxonomy = if (identical(cfg$model$phylogeny_mode, "taxonomy")) dat$taxonomy else NULL,
+                                   phylo_tree_file = if (identical(cfg$model$phylogeny_mode, "newick")) file.path(outdir, "data", "phylo_tree.nwk") else NULL,
                                    newdata = dat$newdata, log_fun = message)
     }, error = function(e) {
       mark_case_status(outdir, "Hmsc-HPC", "fit_failed", warnings = check$messages,
@@ -335,9 +375,14 @@ run_gjam_case <- function(root, case_id, dat, cfg, Y, type_vec, notes = "") {
   dat_case <- prep$dat
   type_tab <- data.frame(response = colnames(Y), typeName = type_vec, stringsAsFactors = FALSE)
   write_pair(type_tab, outdir, "typeNames.csv", row.names = FALSE)
-  write_pair(dat$traits, outdir, "specByTrait.csv")
-  write_pair(data.frame(trait = names(dat$traits), typeName = c("CAT", "CON", "CON"), stringsAsFactors = FALSE),
-             outdir, "traitTypes.csv", row.names = FALSE)
+  if (!is.null(dat$predictor_name_map)) {
+    write_pair(dat$predictor_name_map, outdir, "predictor_name_map.csv", row.names = FALSE)
+  }
+  trait_types <- normalize_gjam_trait_types(dat$traits, dat$traitTypes)
+  if (!is.null(dat$traits) && ncol(dat$traits)) {
+    write_pair(dat$traits, outdir, "specByTrait.csv")
+    write_pair(trait_types, outdir, "traitTypes.csv", row.names = FALSE)
+  }
   safe_yaml_write(cfg, file.path(outdir, "used_config.yml"))
   check <- app_env$validate_gjam_full(
     dat_case$Y, dat_case$X, type_table = type_tab,
@@ -353,7 +398,7 @@ run_gjam_case <- function(root, case_id, dat, cfg, Y, type_vec, notes = "") {
     formula_text = cfg$model$formula,
     newdata = dat$newdata,
     specByTrait = if (isTRUE(cfg$analysis$do_traits)) dat$traits else NULL,
-    traitTypes = data.frame(trait = names(dat$traits), typeName = c("CAT", "CON", "CON")),
+    traitTypes = if (isTRUE(cfg$analysis$do_traits)) trait_types else NULL,
     do_traits = isTRUE(cfg$analysis$do_traits),
     trimY = isTRUE(cfg$response_types$trimY),
     trim_minObs = cfg$response_types$trim_minObs,
@@ -433,7 +478,11 @@ run_sjsdm_case <- function(root, case_id, dat, cfg, Y, notes = "") {
   write_pair(dat$coords, outdir, "spatial.csv")
   write_pair(dat$traits, outdir, "traits.csv")
   write_pair(dat$newdata, outdir, "newdata.csv")
-  write_pair(dat$coords[seq_len(nrow(dat$newdata)), , drop = FALSE], outdir, "new_spatial.csv")
+  new_spatial <- dat$new_spatial %||% dat$newcoords %||% NULL
+  if (is.null(new_spatial) && !is.null(dat$coords) && !is.null(dat$newdata)) {
+    new_spatial <- dat$coords[seq_len(min(nrow(dat$newdata), nrow(dat$coords))), , drop = FALSE]
+  }
+  if (!is.null(new_spatial)) write_pair(new_spatial, outdir, "new_spatial.csv")
   safe_yaml_write(cfg, file.path(outdir, "used_config.yml"))
   check <- app_env$validate_sjsdm(dat_case$Y, dat$X, dat$coords, dat$traits,
                                   family = cfg$model$family,
@@ -550,7 +599,7 @@ run_suite <- function() {
   hcfg$mcmc$samples <- 4L; hcfg$mcmc$transient <- 4L; hcfg$mcmc$nChains <- 1L
   hcfg$outputs$cv <- FALSE; hcfg$outputs$waic <- FALSE
   add_result(run_hmsc_case(root, "hmsc_probit_sample_traits_phylo", dat, hcfg, dat$Y,
-                           "probit, sample random effect, traits, phylogenetic covariance."))
+                           "probit, sample random effect, traits, Newick/taxonomy-derived phylogeny."))
   hcfg2 <- hcfg
   hcfg2$model$distr <- "poisson"; hcfg2$model$use_traits <- FALSE; hcfg2$model$use_phylogeny <- FALSE
   hcfg2$model$random_mode <- "spatial_nngp"; hcfg2$model$spatial_method <- "NNGP"; hcfg2$model$nNeighbours <- 3L
@@ -576,7 +625,7 @@ run_suite <- function() {
   hpc$sampler$verbose <- 1L; hpc$sampler$samples <- 2L; hpc$sampler$transient <- 2L; hpc$sampler$chains <- 1L
   hpc$random_effects$nfMax <- 3L
   add_result(run_hmschpc_case(root, "hmschpc_probit_iid_traits_phylo", dat, hpc, dat$Y,
-                              "CPU Hmsc-HPC probit, iid random level, traits, phylogenetic covariance."))
+                              "CPU Hmsc-HPC probit, iid random level, traits, taxonomy-derived phylogeny."))
   hpc2 <- hpc
   hpc2$model$distribution <- "poisson"; hpc2$model$use_traits <- FALSE; hpc2$model$phylogeny_mode <- "none"
   hpc2$random_effects$mode <- "none"

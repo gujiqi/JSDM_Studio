@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>JSDM Studio: woodland bird and tilted mushroom</title>
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2=".9" y2="1">
+      <stop stop-color="#547763"/>
+      <stop offset="1" stop-color="#234438"/>
+    </linearGradient>
+    <path id="tile" d="M41 4h46c25 0 37 12 37 37v46c0 25-12 37-37 37H41C16 124 4 112 4 87V41C4 16 16 4 41 4Z"/>
+    <clipPath id="tile-clip"><use href="#tile"/></clipPath>
+    <clipPath id="cap-top">
+      <path d="M1 15C3 6 11 2 20 2s18 5 19 13c-2 6-36 6-38 0Z"/>
+    </clipPath>
+  </defs>
+  <use href="#tile" fill="url(#base)"/>
+  <g clip-path="url(#tile-clip)">
+    <g transform="translate(10.88 15.15) scale(.83 .77)">
+      <path d="M46 71Q32 67 18 56" fill="none" stroke="#9cbc78" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M32 65c-9 1-17-1-22-7 9-3 17-1 22 7Zm-8-6c-7-2-11-8-10-15 8 1 13 9 10 15Zm7 3q-1-9 9-12 2 8-9 12Z" fill="#9cbc78"/>
+      <g id="falling-foliage">
+        <path d="M31.4 65.6c-5.8.8-11.5 5.2-12.6 12.8" fill="none" stroke="#9cbc78" stroke-width="1.55" stroke-linecap="round"/>
+        <path d="M20.6 72.6c-5.2.6-8.3 4.3-8.8 9.2 5.8-1 8.6-4.5 8.8-9.2Z" fill="#a4be7a"/>
+        <path d="M25.4 83.2c3.8.5 6.2 3.4 6.1 7.3-4.8-.6-7.3-3.4-6.1-7.3Z" fill="#a4be7a" opacity=".83"/>
+      </g>
+      <path id="fungus-stem" d="M88.65 71.2Q91.5 70.4 93.9 74.1C90.5 79.2 84 84.1 73.5 87.3l-2-3.9C79.3 80.7 84.6 76.7 88.65 71.2Z" fill="#eddbb6"/>
+      <path d="M45 51c7-1 24-1 30 0l1 22c1 6 6 11 10 15-7 2-13 1-20-2-7 4-20 4-31 1 4-4 9-10 9-17Z" fill="#ae825f"/>
+      <path d="M45 51c3-4 24-4 30 0 2 5-29 6-30 0Z" fill="#e3bc86"/>
+      <path d="M51 51q9-3 18 0m-15 8-2 20m10-17v15m7-17 1 13" fill="none" stroke="#805b43" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M36 86q3-5 7-4 2-5 7-2 5-4 11 2 5-3 8 1 5-1 8 5-23 4-41-2Z" fill="#9cbc78"/>
+      <path d="M42 86q6-3 10-2m6 2 6-1" fill="none" stroke="#d3db9d" stroke-width="1.12" stroke-linecap="round" stroke-linejoin="round"/>
+      <g id="fungus-cap" transform="translate(93 71) scale(1 1.077922078) rotate(45) scale(1 .927710843) translate(-19 -16)">
+        <path d="M1 15C3 6 11 2 20 2s18 5 19 13c-2 6-36 6-38 0Z" fill="#dda168"/>
+        <path d="M2 16q19-4 36-1-5 5-19 5-12 0-17-4Z" fill="#9a6449"/>
+        <g clip-path="url(#cap-top)" fill="#fae6ba" opacity=".88">
+          <circle cx="12" cy="8" r="1.55"/>
+          <circle cx="19" cy="5.9" r="1.25"/>
+          <circle cx="28" cy="9" r="1.7"/>
+        </g>
+      </g>
+      <g id="spores" fill="#f6d6a2">
+        <circle cx="106.4" cy="59.3" r="1.32" opacity=".94"/>
+        <circle cx="113.8" cy="62.1" r=".86" opacity=".83"/>
+        <circle cx="112.2" cy="53.1" r="1.03" opacity=".89"/>
+        <circle cx="102.6" cy="51.8" r=".88" opacity=".82"/>
+        <circle cx="108.1" cy="46.9" r=".63" opacity=".69"/>
+      </g>
+      <g transform="translate(58 72) rotate(-16)">
+        <path d="M-2-1l-2-1m2 3-2 1m6-3 2-1m-2 3 2 1" fill="none" stroke="#394631" stroke-width=".72" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cy="-2.4" r="1.15" fill="#334535"/>
+        <ellipse rx="2.25" ry="2.95" fill="#42573c"/>
+        <path d="M0-1v3.3" fill="none" stroke="#8e9d65" stroke-width=".7" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+    </g>
+    <g id="bird" transform="translate(22.73 8.025) scale(1.16)">
+      <path d="M11 28Q5 21 1 24q2 9 16 7Z" fill="#8bb5a4"/>
+      <path d="M8 24c4-7 12-10 21-8 1-7 6-11 13-10 8 1 12 8 11 15-1 9-10 15-24 15-11 0-19-4-21-12Z" fill="#fff1d6"/>
+      <path d="M29 17c0-7 6-12 13-11 7 1 11 7 11 13-6-4-12-4-16 3-3 1-7-1-8-5Z" fill="#8bb5a4"/>
+      <path d="M12 25c5-6 15-8 22-3 0 5-7 9-14 9-4 0-7-2-8-6Z" fill="#8bb5a4"/>
+      <path d="M17 25q6-4 13-2" fill="none" stroke="#d8ead9" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M52 17l6 3.5-6 3Z" fill="#e4ad76"/>
+      <g id="eye">
+        <circle cx="46.5" cy="17.6" r="3.15" fill="#163338"/>
+        <circle cx="47.3" cy="16.6" r=".94" fill="#fff8e8"/>
+        <circle cx="45.65" cy="18.53" r=".42" fill="#d6e7da"/>
+      </g>
+      <circle cx="46" cy="24.6" r="2.05" fill="#efc092"/>
+      <path d="M26 34l1 5h5m4-5 1 5h4" fill="none" stroke="#e6b780" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <path id="wordmark" transform="translate(28.4 96) scale(.825)"
+          d="M3 3h13v12c0 5-3 7-7 7-3 0-5-1-6-4M36 5c-2-2-4-2-7-2-4 0-7 2-7 5 0 7 15 3 15 9 0 3-3 5-8 5-3 0-6-1-8-3M44 22V3h6c7 0 11 4 11 9.5S57 22 50 22Zm24 0V3l9 12 9-12v19"
+          fill="none" stroke="#fff4db" stroke-width="3.65" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <use href="#tile" fill="none" stroke="#fff4db" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" opacity=".22"/>
+</svg>
